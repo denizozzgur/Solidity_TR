@@ -205,10 +205,39 @@ contract Coin {
 
 Bu sözleşme bazı yeni konseptler de ortaya koyuyor, tek tek üzerinden geçelim.
 
-`address public minter;` satırı, genel olarak erişilebilir bir `adres` tipi durum değişkenini bildirir. `Adres` türü, aritmetik işlemlere izin vermeyen 160 bitlik bir değerdir. Bu tür, sözleşmelerin adreslerinin veya dış kişilere ait anahtar çiftlerinin depolanması için uygundur. `Public` anahtar sözcüğü, durum değişkeninin geçerli değerine sözleşmenin dışından erişilmesine olanak sağlayan bir işleve sahiptir. Bu anahtar kelime kullanılmadığı takdirde, diğer sözleşmelerden bu değişkene erişmenin yolu yoktur. Derleyici veya geliştirici tarafından oluşturulan işlevin kodu kabaca aşağıdakine eşittir (şimdilik `ignore` ve `view`i görmezden gelelim):
+`address public minter;` satırı, genel olarak erişilebilir bir `adres` tipi durum değişkenini bildirir. `Adres` türü, aritmetik işlemlere izin vermeyen 160 bitlik bir değerdir. Bu tür, sözleşmedeki adreslerinin veya dış kişilere ait anahtar çiftlerinin depolanması için uygundur. `Public` anahtar sözcüğü, durum değişkeninin geçerli değerine sözleşmenin dışından erişilmesine olanak sağlayan bir işleve sahiptir. Bu anahtar kelime kullanılmadığı takdirde, diğer sözleşmelerden bu değişkene erişmenin yolu yoktur. Derleyici veya geliştirici tarafından oluşturulan işlevin kodu kabaca aşağıdakine eşittir (şimdilik `ignore` ve `view` i görmezden gelelim):
 
 ```
 function minter() external view returns (address) { return minter; }
 ```
+Elbette, tam olarak bunun gibi bir işlev eklemek kodun çalışmamasına sebep olurdu. Çünkü aynı ada sahip bir işlevimiz ve yine aynı isimde bir durum değişkenimiz olacaktı. Ama umarım, siz mantığı anladınız - derleyici sizin için bunu farkedecektir. 
 
+Bir sonraki satırda bulunan `mapping (address => uint) public balances;` yine bir public durum değişkeni yaratır, ancak bu daha karmaşık bir veri türüdür. Bu tür, sözleşmedeki adresleri, işaretsiz tamsayılarla eşleştirmek için kullanılır. Bu eşlemeleri fiziksel olarak betimlemeye çalışalım: Olası her anahtarın, başlangıçtan itibaren var olan ve bayt değerinin tümü sıfıra eşit bir değere atandığı hash tablolarını düşünebiliriz . Bu benzetme üzerine çok kafa yormayın, çünkü bir eşlemenin tüm anahtarlarının bir listesini ya da tüm değerlerin bir listesini elde etmek mümkün değildir. Bu nedenle, genel kavramı  aklınızda bulundurun (ya da daha iyisi bir liste yapın ya da daha gelişmiş bir veri eşleme türü kullanın) ya da bunun gerekmediği bir sistem oluşturun. Public anahtar kelimesi tarafından oluşturulan getter fonksiyonu bu durumda biraz daha karmaşıktır. Bu fonksiyon kabaca aşağıdaki gibi görünüyor:
+
+```
+function balances(address _account) external view returns (uint) {
+    return balances[_account];
+}
+```
+
+Gördüğünüz gibi, tek bir hesabın bakiyesini kolayca sorgulamak için bu işlevi kullanabilirsiniz.
+
+
+`event Sent(address from, address to, uint amount);` satırı, gönderme fonksiyonunun son satırında yayınlanan “event(olay)” olarak adlandırılır. Kullanıcı arayüzleri (tabii ki sunucu uygulamalarında olduğu gibi) blok zincirinde yayınlanan olayları fazla maliyet olmadan dinleyebilir. Yayınlandığı anda dinleyici, işlemlerin izlenmesini kolaylaştıran, miktar, zaman ve sözleşme argümanları gibi bilgilere de sahip olur. Bu olayı dinlemek için, aşağıdaki JavaScript kodunu kullanmanız gerekir ( Burada Coin'in web3.js veya benzeri bir modül üzerinden yaratılmış bir sözleşme nesnesi olduğu varsayılmaktadır):
+
+```
+Coin.Sent().watch({}, '', function(error, result) {
+    if (!error) {
+        console.log("Coin transfer: " + result.args.amount +
+            " coins were sent from " + result.args.from +
+            " to " + result.args.to + ".");
+        console.log("Balances now:\n" +
+            "Sender: " + Coin.balances.call(result.args.from) +
+            "Receiver: " + Coin.balances.call(result.args.to));
+    }
+})
+```
+Burada otomatik olarak üretilen `balances` fonksiyonunun kullanıcı arayüzü tarafından nasıl çağrıldığına lütfen dikkat edin.
+
+Constructer fonksiyonu,yalnızca sözleşmenin oluşturulması sırasında belirtilen ve daha sonra çağrılamayan özel bir fonksiyondur. Sözleşmeyi oluşturan kişinin adresini kalıcı olarak saklar: `msg` (`tx` ve `block` ile birlikte), blok zincirine erişime izin veren bazı özellikleri içeren özel bir global değişkendir. `msg.sender` ise her zaman geçerli (harici) işlev çağrısının geldiği adresdir.
 

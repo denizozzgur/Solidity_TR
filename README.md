@@ -127,7 +127,7 @@ Topluluktan bazı gönüllüler bu belgeyi farklı dillere çevirmekte bizlere y
   - Gelişmiş Sorular
 + LLL
 
-#Akıllı Sözleşmelere Giriş
+# Akıllı Sözleşmelere Giriş
 ===
 
 ## Basit Bir Akıllı Sözleşme
@@ -166,3 +166,49 @@ Bu sözleşme henüz, Ethereum tarafından oluşturulan altyapıdan dolayı, ata
 >Unicode metni kullanırken dikkatli olunması gerekir, çünkü benzer görünümlü (hatta aynı) karakterler farklı kod işlevlerine sahip olabilir ve farklı bir bayt dizisi olarak kodlanabilirler.
 
 ## Alt Para Birimi Örneği
+
+Aşağıdaki sözleşme, bir kripto para biriminin en basit şeklini oluşturmak amacıyla yazılmıştır. Ethereum akıllı sözleşmeleri ile kripto para üretmek mümkündür, ancak bunu yalnızca sözleşmeyi oluşturan kişi yapabilir (farklı bir düzenleme planı uygulamak mümkündür). Ağdaki herkes, kullanıcı adı ve şifre ile bir yere kaydolmaya gerek duymadan birbirlerine para gönderebilir ve ödeme alabilirler - bunu yaparken tek ihtiyaçları olan bir Ethereum anahtar çiftidir.
+
+```
+pragma solidity ^0.5.0;
+
+contract Coin {
+    // The keyword "public" makes those variables
+    // easily readable from outside.
+    address public minter;
+    mapping (address => uint) public balances;
+
+    // Events allow light clients to react to
+    // changes efficiently.
+    event Sent(address from, address to, uint amount);
+
+    // This is the constructor whose code is
+    // run only when the contract is created.
+    constructor() public {
+        minter = msg.sender;
+    }
+
+    function mint(address receiver, uint amount) public {
+        require(msg.sender == minter);
+        require(amount < 1e60);
+        balances[receiver] += amount;
+    }
+
+    function send(address receiver, uint amount) public {
+        require(amount <= balances[msg.sender], "Insufficient balance.");
+        balances[msg.sender] -= amount;
+        balances[receiver] += amount;
+        emit Sent(msg.sender, receiver, amount);
+    }
+}
+```
+
+Bu sözleşme bazı yeni konseptler de ortaya koyuyor, tek tek üzerinden geçelim.
+
+`address public minter;` satırı, genel olarak erişilebilir bir `adres` tipi durum değişkenini bildirir. `Adres` türü, aritmetik işlemlere izin vermeyen 160 bitlik bir değerdir. Bu tür, sözleşmelerin adreslerinin veya dış kişilere ait anahtar çiftlerinin depolanması için uygundur. `Public` anahtar sözcüğü, durum değişkeninin geçerli değerine sözleşmenin dışından erişilmesine olanak sağlayan bir işleve sahiptir. Bu anahtar kelime kullanılmadığı takdirde, diğer sözleşmelerden bu değişkene erişmenin yolu yoktur. Derleyici veya geliştirici tarafından oluşturulan işlevin kodu kabaca aşağıdakine eşittir (şimdilik `ignore` ve `view`i görmezden gelelim):
+
+```
+function minter() external view returns (address) { return minter; }
+```
+
+

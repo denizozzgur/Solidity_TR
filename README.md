@@ -453,6 +453,85 @@ Belirli bir `solidity.rb` ham dosya bağlantısına sahip oluncaya kadar geçmi�
 Brew kullanarak kurun:
 
 ```
+brew unlink solidity
+# Install 0.4.8
+brew install https://raw.githubusercontent.com/ethereum/homebrew-ethereum/77cce03da9f289e5a3ffe579840d3c5dc0a62717/solidity.rb
+```
+
+Gentoo Linux ayrıca `emerge` kullanılarak kurulabilen bir Soldiity paketi sunuyor:
 
 ```
+emerge dev-lang/solidity
+```
+
+## Kaynağından Kurulum
+
+### Linux - Önkoşullar
+
+Linux'un Solidity sürümleri için aşağıdaki ön koşul dosyalarını kurmanız gerekir:
+
+======================
+
+
+### MacOS - Önkoşullar
+
+MacOS için, en son Xcode sürümünün yüklü olduğundan emin olun. Bu, Clang C ++ derleyicisini, Xcode IDE'yi ve OS X'te C ++ uygulamaları oluşturmak için gerekli olan diğer Apple geliştirme araçlarını içerir. İlk kez Xcode yüklüyorsanız veya yeni bir sürüm yüklediyseniz, onaylamanız gerekir. Komut satırından işlem yapabilmeniz için önce lisansı onaylamanız gerekir:
+
+```
+sudo xcodebuild -license accept
+```
+OS X sürümlerimiz, harici ön koşul dosyalarını kurmak için [Homebrew paket yöneticisini kurmanızı](http://brew.sh/) gerektirir. İşte yine sıfırdan başlamak istiyorsanız, [Homebrew'ü buradan kaldırabilirsiniz](https://github.com/Homebrew/homebrew/blob/master/share/doc/homebrew/FAQ.md#how-do-i-uninstall-homebrew).
+
+### Windows - Önkoşullar
+
+Windows'un Solidity sürümleri için aşağıdaki ön koşul dosyalarını kurmanız gerekir:
+
+================
+
+Zaten bir IDE'niz varsa ve yalnızca derleyici ve kitaplıklara ihtiyacınız varsa, Visual Studio 2017 Yapı Araçları'nı yükleyebilirsiniz.
+
+Visual Studio 2017 hem IDE hem de gerekli derleyici ve kütüphaneler sunar. Bu yüzden bir IDE'niz yoksa ve sağlamlığı geliştirmeyi tercih ediyorsanız, Visual Studio 2017, her şeyi kolayca kurmanız için bir seçenek olabilir.
+
+Visual Studio 2017 Yapı Araçları veya Visual Studio 2017'de yüklenmesi gereken bileşenlerin listesi:
+
++ Visual Studio C++ core features
++ VC++ 2017 v141 toolset (x86,x64)
++ Windows Universal CRT SDK
++ Windows 8.1 SDK
++ C++/CLI support
+
+### Depoyu Klonlama
+
+Kaynak kodu klonlamak için aşağıdaki komutu uygulayın:
+
+```
+git clone --recursive https://github.com/ethereum/solidity.git
+cd solidity
+```
+
+Eğer Solidity dilini geliştirmeye yardım etmek istiyorsanız, Solidity üzerinde çatallama yapmalı ve kişisel çatalınızı ikinci bir remote olarak eklemelisiniz:
+```
+git remote add personal git@github.com:[username]/solidity.git
+```
+
+### Dış Bağımlılıklar
+
+Gerekli tüm dış bağımlılıkları macOS, Windows ve sayısız Linux dağıtımına yükleyen bir yardımcı programımız var:
+
+```
+./scripts/install_deps.sh
+```
+Veya Windows için:
+
+```
+scripts\install_deps.bat
+```
+
+### Komut Satırı Oluştur
+
+
+```
+```
+
+
 

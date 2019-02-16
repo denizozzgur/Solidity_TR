@@ -14,6 +14,12 @@ Sözleşmelerin dağıtımını yaparken, en son yayınlanan Solidity sürümün
 
 ## Dil Dökümantasyonları
 
-Akıllı sözleşmeler kavramında yeniyseniz, Solidity ile yazılmış bir akıllı sözleşmeyle başlamanızı öneririz. Daha fazla ayrıntıya hazır olduğunuzda, dilin temel kavramlarını öğrenmek için “Örnek ile Solidity” ve “Derinlemesine Solidity” bölümlerini okumanızı öneririz.
+Akıllı sözleşmeler kavramında yeniyseniz, Solidity ile yazılmış bir akıllı sözleşmeyle başlamanızı öneririz. Daha fazla ayrıntıya hazır olduğunuzda, dilin temel kavramlarını öğrenmek için “Örnek ile Solidity” ve “Derinlemesine Solidity” bölümlerini okumanızı öneriyoruz.
 
 Daha fazla bilgi için, blockchain temellerini ve Ethereum Virtual Machine'in detaylarını inceleyebilirsiniz.
+
+### [İpucu](https://github.com/markdown-it/markdown-it-container)
+
+::: warning
+Tarayıcınızdaki kod örneklerini her zaman Remix IDE ile deneyebilirsiniz. Remix, Solidity ile akıllı sözleşmeler yazmanıza, ardından akıllı sözleşmeleri çalıştırmanıza ve yönetmenize izin veren web tarayıcısı tabanlı bir IDE'dir. Yüklenmesi biraz zaman alabilir, bu yüzden lütfen sabırlı olun.
+:::

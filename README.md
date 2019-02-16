@@ -527,11 +527,93 @@ Veya Windows için:
 scripts\install_deps.bat
 ```
 
-### Komut Satırı Oluştur
+### Komut Satırı Oluşturma
+
+Buraya geçilmeden önce bir önceki başlıkta açıklanan (bknz. Dış Bağımlılıklar) ön koşulların kurulmuş olduğundan emin olun.
+
+Solidity projeleri yapıyı sağlamlaştırmak için CMake'i kullanır. Tekrarlanan yapıları hızlandırmak için ccache yüklemek isteyebilirsiniz. CMake otomatik ccache'i otomatik olarak yükleyecektir. Solidity dilinde kodlama yapmak Linux, macOS ve diğer işletim sistemleri için ile oldukça benzer yapıdadır:
+
+```
+mkdir build
+cd build
+cmake .. && make
+```
+
+Daha da kolay olsun derseniz:
+```
+./scripts/build.sh
+```
+Windows İçin;
+```
+mkdir build
+cd build
+cmake -G "Visual Studio 15 2017 Win64" ..
+```
+Bu ikinci komut dizisi, o derleme dizininde solidity.sln oluşturulmasına neden olur. Bu dosyaya çift tıklamak, Visual Studio'nun açılmasına yol açar. **Release** yapılandırma sistemini öneririz, ancak diğerleri de sorunsuz çalışacaktır.
+
+```
+cmake --build . --config Release
+```
+## CMake Seçenekleri
+
+Hangi CMake seçeneklerinin mevcut olduğunu merak ediyorsanız basitçe  `cmake .. -LH` komutunu çalıştırabilirsiniz.
+
+### SMT Çözücüleri
+
+Solidity programları, SMT çözücülerine karşı geliştirilebilir hatta eğer sistemde bulunurlarsa bunu varsayılan olarak yaparlar. Her çözücü Cmake seçeneği ile devre dışı bırakılabilir.
+
+Not: Bazı durumlarda, derleme hataları için olası bir geçici çözüm de kullanılabilirler.
+
+Yapılması gereken, oluşturma klasörünün içinde, varsayılan olarak etkin olan çözücüleri devre dışı bırakmaktır:
+
+```
+# Sadece Z3 SMT çözücüsünü devre dışı bırakır.
+cmake .. -DUSE_Z3=OFF
+
+# Sadece CVC4 SMT çözücüsünü devre dışı bırakır.
+cmake .. -DUSE_CVC4=OFF
+
+# Z3 & CVC4 çözücülerini devre dışı bırakır
+cmake .. -DUSE_CVC4=OFF -DUSE_Z3=OFF
+
+```
+
+### Sürüm Dizgisi Detayları
+
+Solidity sürüm dizgisi dört bölümden oluşur:
+
++ Sürüm numarası
++ Sürüm öncesi etiketi (genellikle `develop.YYYY.MM.DD` veya `night..YYYY.MM.DD` olarak ayarlanır)
++ İşlem biçiminde `commit.GITHASH`
++ Platform ve derleyici ile ilgili ayrıntıları içeren, rasgele sayıda öğeye sahip platform
+
+Yerel değişiklikler varsa, işleme `.mod` ile eklenir.
+
+Tüm değişiklikler, Semver'in gerektirdiği şekilde, Solidity yayınlanma öncesi sürümün Semver yayınlanma öncesi sürümüne eşit olduğu ve Solidity'de bir işlem yapıldığında Semver'deki meta verilerinin de değiştiği bir şekilde gerçekleşir. 
+
+Bir yayın örneği: `0.4.8 + commit.60cc1668.Emscripten.clang`.
+
+Bir yayın öncesi örneği: `0.4.9-nightly.2017.1.17+commit.6ecb4aa3.Emscripten.clang`.
+
+### Sürüm Oluşturma Hakkında Önemli Bilgiler
+
+Bir versiyon değişikliği yapıldığında, sadece yama seviyesi değişikliklerinin yapıldığını varsaydığımız için yama sürümü seviyesi teste tabi tutulur. Değişiklikler birleştirildiğinde, sürüm semver ve değişimin ciddiyetine göre test edilmelidir. Son olarak, mevcut gecelik derlemenin sürümüyle her zaman yayınlanır, ancak diğerlerinden farklı olarak bu sürümlerde `prerelease` belirteci yoktur.
+
+**Örnek:**
+
++ 0.4.0 sürümü çıktı.
++ Gecelik derleme(nightly build) sonucu 0.4.1 versiyonu çıktı.
++ İşleyişi bozmayan değişiklikler tanıtıldı - sürümde değişiklik yok.
++ Büyük bir değişikliği duyuruldu - sürüm 0.5.0'a yükseltilmeye hazırlanıyor.
++ 0.5.0 sürüm çıktı.
+
+Bu durum [pragma sürüm sistemi](https://solidity.readthedocs.io/en/v0.5.4/layout-of-source-files.html#version-pragma) ile iyi çalışmaktadır.
+
 
 
 ```
-```
+
+
 
 
 

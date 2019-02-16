@@ -127,3 +127,25 @@ Topluluktan bazı gönüllüler bu belgeyi farklı dillere çevirmekte bizlere y
   - Gelişmiş Sorular
 + LLL
 
+#Akıllı Sözleşmelere Giriş
+===
+
+## A Simple Smart Contract
+
+Temel bir örnekle başlayalım. Bir değişkene değer verelim ve bir diğer sözleşme ile bu değişkene erişmeye çalışalım. Şu anda her şeyi anlamıyorsanız sorun değil, bu konuları daha sonra ayrıntılı olarak ele alacağız.
+
+```
+pragma solidity >=0.4.0 <0.6.0;
+
+contract SimpleStorage {
+    uint storedData;
+
+    function set(uint x) public {
+        storedData = x;
+    }
+
+    function get() public view returns (uint) {
+        return storedData;
+    }
+}
+```

@@ -1324,3 +1324,218 @@ contract ReceiverPays {
 }
 ```
 
+### Basit Bir Ödeme Kanalı Yazmak
+
+Alice şimdi de bir ödeme kanalını basit fakat tamanlanmış bir şekilde oluşturmak istemektedir. Ödeme kanalları, tekrar tekrar Ether transferini güvenli, anında ve işlem ücreti ödemeden yapmak için kriptografik imzalar kullanır.
+
+#### What is a Payment Channel?
+
+Ödeme kanalları, katılımcıların işlem yapmaksızın tekrar tekrar Ether transferi yapabilmelerini sağlar. Bu, işlemlerle ilgili gecikmelerden ve ücretlerden kaçınabileceğiniz anlamına gelir. İki taraf (Alice ve Bob) arasındaki tek yönlü basit bir ödeme kanalını keşfedeceğiz. Bu süreç üç adımdan oluşur:
+
++ Alice, bir akıllı sözleşmeye Ether gönderir. Bu ödeme kanalını “açar”.
++ Alice, bu Ether'in ne kadarını alıcıya iletmek istediğini belirten mesajları imzalar. Bu adım her ödeme için tekrarlanır.
++ Bob, ödeme kanalında kendisine teslim edilecek “Ether”i alarak ve kalanı gönderene geri gönderir ve kanalı “kapatır”.
+
+#### [Uyarı](#)
+
+> Yalnızca 1. ve 3. adımlar, Ethereum üzerinde işlem gerçekleştirir, 2. adım, gönderenin alıcıya zincir dışı yöntemlerle (ör. E-posta) şifreli olarak imzalanmış bir mesaj ilettiğini gösterir. Bu, herhangi bir sayıda aktarımı desteklemek için yalnızca iki işlem yapılması gerektiği anlamına gelir.
+
+Bob'un ödemesini alması garantilidir, çünkü akıllı sözleşme Ether'i kabul eder ve geçerli bir imzalı mesaj karşılığında teslimi gerçekleştirir. Akıllı sözleşme ayrıca bir zaman aşımı da barındırır. Bu sayede alıcı kanalı kapatmayı reddetse bile Alice'in fonlarını geri alması garanti edilir. Kanalı ne kadar süre açık tutacaklarına karar vermek, ödeme kanalındaki katılımcılara bağlıdır. Dakika başına ödeme yaptığımız bir internet kafe gibi kısa vadeli işlemlerden, bir çalışanımızın aylık maaşını ödediğimiz uzun vadeli işlemlere kadar dilediğimiz vadede kanallar yaratabiliriz.
+
+### Bir Ödeme Kanalı Açmak
+
+Ödeme kanalını açmak için, Alice, gönderilmek istenen Eter'i, alıcıyı ve kanalın varolması için maksimum süreyi belirleyerek akıllı sözleşmeyi oluşturur. Bu işlem, bölümün sonundaki sözleşmeden bulunan `SimplePaymentChannel` fonksiyonunda gösterilmiştir.
+
+### Ödeme Yapmak
+
+Alice, Bob'a imzalı mesajlar göndererek ödeme yapar. Bu adım tamamen Ethereum ağının dışında gerçekleştirilir. Mesajlar gönderen tarafından şifreli olarak imzalanır ve daha sonra doğrudan alıcıya iletilir.
+
+Her mesaj aşağıdaki bilgileri içerir:
+
++ Akıllı sözleşmenin adresi, sözleşmeler arası tekrarlama saldırılarını önlemek için kullanılır.
++ Alıcıya borçlu olunan toplam Ether miktarı.
+
+Bir ödeme kanalı, bir dizi transferin sonunda yalnızca bir kez kapatılır. Bu nedenle, gönderilen mesajlardan yalnızca biri için ödeme yapılır. Her bir mesajın, ayrı ayrı mikro ödeme miktarı içermemesi bunun yerine toplam toplam Ether borcu belirtmesi işte bu yüzdendir. Alıcı, doğal olarak en son mesajı ödemeyi seçecektir, çünkü toplamda en yüksek fiyat bu mesaja aittir. Akıllı sözleşme temelde yalnızca bir mesajla çalıştırıldığından, nonce numarası burada gerekli değildir. Bunun yerine akıllı sözleşmenin adresi, bir ödeme kanalı için amaçlanan bir iletinin farklı bir kanal tarafından kullanılmasını önlemeye devam eder.
+
+Önceki bölümden bir mesajı kriptografik olarak imzalamak için değiştirilmiş JavaScript kodu:
+
+```
+function constructPaymentMessage(contractAddress, amount) {
+    return abi.soliditySHA3(
+        ["address", "uint256"],
+        [contractAddress, amount]
+    );
+}
+
+function signMessage(message, callback) {
+    web3.eth.personal.sign(
+        "0x" + message.toString("hex"),
+        web3.eth.defaultAccount,
+        callback
+    );
+}
+
+// contractAddress is used to prevent cross-contract replay attacks.
+// amount, in wei, specifies how much Ether should be sent.
+
+function signPayment(contractAddress, amount, callback) {
+    var message = constructPaymentMessage(contractAddress, amount);
+    signMessage(message, callback);
+}
+
+```
+### Bir Ödeme Kanalını Kapatmak
+
+Bob tüm ödemeleri teslim aldığında, akıllı sözleşmedeki kapatma işlevini çağırarak ödeme kanalını kapatmalıdır. `Close` fonksiyonu alıcıya borçlu olunan Ether'in tamamını ödeyerek ve sözleşmeyi imha eder; kalan Ether'i ise Alice'e geri gönderir. Kanalı kapatmak için Bob'un Alice tarafından imzalanmış bir mesaj vermesi gerekir.
+
+Akıllı sözleşme bu mesajın, Alice'e ait geçerli bir imza içerdiğini doğrulamalıdır. Bu doğrulamayı yapma işlemi, alıcının kullandığı işlemle aynıdır. `ReceiverPays` sözleşmesinden ödünç alınan Solidity fonksiyonları `isValidSignature` ve `recoverSigner`, önceki bölümdeki JavaScript benzerleri gibi çalışır.
+
+Sadece ödeme kanalı alıcısı, doğal olarak en son mesajı aldığı için, `close` fonksiyonunu çağırabilir. Gönderenin bu işlevi çağırmasına izin verilirse, daha az miktar ödeyerek bir mesaj vermeyi tercih edebilir ve alıcıya borçlu olduğu tüm Ether miktarını vermeden kanalı kapatır.
+
+`close` fonksiyonu, imzalanan iletinin verilen parametrelerle eşleştiğini doğrular. Her şeyi kontrol eder, alıcıya Ether'in ona ait kısmını gönderir ve geri kalan Ether miktarını gönderene geri iletir. `selfdestruct` fonksiyonunu aşağıdaki detaylı sözleşmede görebilirsiniz.
+
+### Ödeme Kanalının Sonlandırılması
+
+Bob, ödeme kanalını dilediği zaman kapatabilir, ancak başaramazsa, Alice'in sözleşme sonunda geri alacağı Ether'i almak için bir yola ihtiyacı vardır. Sözleşme devri sırasında bir zaman aşımı süresi belirlenir. Bu süreye ulaşıldığında, Alice fonlarını geri almak için hak talebinde bulunabilir. `ClaimTimeout` işlevini aşağıdaki detaylı sözleşmede görebilirsiniz.
+
+#### Detaylı Sözleşme
+
+```
+pragma solidity >=0.4.24 <0.6.0;
+
+contract SimplePaymentChannel {
+    address payable public sender;      // The account sending payments.
+    address payable public recipient;   // The account receiving the payments.
+    uint256 public expiration;  // Timeout in case the recipient never closes.
+
+    constructor (address payable _recipient, uint256 duration)
+        public
+        payable
+    {
+        sender = msg.sender;
+        recipient = _recipient;
+        expiration = now + duration;
+    }
+
+    function isValidSignature(uint256 amount, bytes memory signature)
+        internal
+        view
+        returns (bool)
+    {
+        bytes32 message = prefixed(keccak256(abi.encodePacked(this, amount)));
+
+        // check that the signature is from the payment sender
+        return recoverSigner(message, signature) == sender;
+    }
+
+    /// the recipient can close the channel at any time by presenting a
+    /// signed amount from the sender. the recipient will be sent that amount,
+    /// and the remainder will go back to the sender
+    function close(uint256 amount, bytes memory signature) public {
+        require(msg.sender == recipient);
+        require(isValidSignature(amount, signature));
+
+        recipient.transfer(amount);
+        selfdestruct(sender);
+    }
+
+    /// the sender can extend the expiration at any time
+    function extend(uint256 newExpiration) public {
+        require(msg.sender == sender);
+        require(newExpiration > expiration);
+
+        expiration = newExpiration;
+    }
+
+    /// if the timeout is reached without the recipient closing the channel,
+    /// then the Ether is released back to the sender.
+    function claimTimeout() public {
+        require(now >= expiration);
+        selfdestruct(sender);
+    }
+
+    /// All functions below this are just taken from the chapter
+    /// 'creating and verifying signatures' chapter.
+
+    function splitSignature(bytes memory sig)
+        internal
+        pure
+        returns (uint8 v, bytes32 r, bytes32 s)
+    {
+        require(sig.length == 65);
+
+        assembly {
+            // first 32 bytes, after the length prefix
+            r := mload(add(sig, 32))
+            // second 32 bytes
+            s := mload(add(sig, 64))
+            // final byte (first byte of the next 32 bytes)
+            v := byte(0, mload(add(sig, 96)))
+        }
+
+        return (v, r, s);
+    }
+
+    function recoverSigner(bytes32 message, bytes memory sig)
+        internal
+        pure
+        returns (address)
+    {
+        (uint8 v, bytes32 r, bytes32 s) = splitSignature(sig);
+
+        return ecrecover(message, v, r, s);
+    }
+
+    /// builds a prefixed hash to mimic the behavior of eth_sign.
+    function prefixed(bytes32 hash) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
+    }
+}
+```
+#### [Uyarı](#)
+
+> `SplitSignature` fonksiyonu gerekli tüm güvenlik tedbirlerini kullanmaz. Gerçek bir uygulama, openzepplin’in [bu sürümü](https://github.com/OpenZeppelin/openzeppelin-solidity/blob/master/contracts/ECRecovery.sol) gibi daha titizlikle test edilmiş bir kütüphane kullanmalıdır.
+
+### Ödemeleri Onaylama
+
+Önceki bölümden farklı olarak, bir ödeme kanalındaki iletiler için hemen ödeme yapılmaz. Alıcı en son iletiyi takip eder ve ödeme kanalını kapatma zamanı geldiğinde onu kapatma talebinde bulunur. Bu, alıcının her iletiyi kendi kendine doğrulamasının kritik olduğu anlamına gelir. Aksi halde, alıcının sonunda ödemesini alabileceğinin garantisi yoktur.
+
+Alıcı, aşağıdaki her mesaj için aşağıdaki bilgileri doğrulamalıdır:
+
++ Mesajdaki irtibat adresinin ödeme kanalıyla eşleştiği
++ Yeni toplamın beklenen miktar olduğu
++ Yeni toplamın, beklenilen Ether miktarını aşmadığı
++ İmzanın geçerli olduğunu ve ödeme kanalı göndericisinden geldiği
+
+Bu doğrulamayı yazmak için `ethereumjs-util` kütüphanesini kullanacağız. Son adım birkaç şekilde yapılabilir ancak biz JavaScript kullanacağız. Aşağıdaki kod, `constructMessage` fonksiyonunu yukarıdaki `JavaScript'te İmzalama` kodundan alınmıştır:
+
+```
+// this mimics the prefixing behavior of the eth_sign JSON-RPC method.
+function prefixed(hash) {
+    return ethereumjs.ABI.soliditySHA3(
+        ["string", "bytes32"],
+        ["\x19Ethereum Signed Message:\n32", hash]
+    );
+}
+
+function recoverSigner(message, signature) {
+    var split = ethereumjs.Util.fromRpcSig(signature);
+    var publicKey = ethereumjs.Util.ecrecover(message, split.v, split.r, split.s);
+    var signer = ethereumjs.Util.pubToAddress(publicKey).toString("hex");
+    return signer;
+}
+
+function isValidSignature(contractAddress, amount, signature, expectedSigner) {
+    var message = prefixed(constructPaymentMessage(contractAddress, amount));
+    var signer = recoverSigner(message, signature);
+    return signer.toLowerCase() ==
+        ethereumjs.Util.stripHexPrefix(expectedSigner).toLowerCase();
+}
+
+```
+
+```
+```
+```
+```
+

@@ -24,7 +24,7 @@ Daha fazla bilgi için, blockchain temellerini ve Ethereum Sanal Makinesi'nin de
 
 ### [Uyarı](#)
 
->Yazılımlar insanlar tarafından yazıldığından hatalar içerebilirler. Akıllı sözleşmelerinizi yazarken kabul görmüş yazılım geliştirme kurallarına uymanız tavsiye edilir; buna kod incelemesi, testler, denetimler ve doğruluk kanıtları da dahildir. Akıllı sözleşme kullanıcıları bazen kodlara yazarlarından daha fazla güven duyarlar. Blockchain ve akıllı sözleşmelerde özellikle dikkat edilmesi gereken özel konular olduğundan; geliştirici olarak herhangi bir kod üzerinde çalışmaya başlamadan önce Güvenlikle İlgili Hususlar bölümünü okuduğunuzdan emin olunuz.
+>Yazılımlar insanlar tarafından yazıldığından hatalar içerebilirler. Akıllı sözleşmelerinizi yazarken kabul görmüş yazılım geliştirme kurallarına uymanız tavsiye edilir; buna kod incelemesi, testler, denetimler ve doğruluk kanıtları da dahildir. Akıllı sözleşme kullanıcıları bazen kodlara yazarlarından daha fazla güven duyarlar. Blockchain ve akıllı sözleşmelerde özellikle dikkat edilmesi gereken özel konular olduğundan; geliştirici olarak herhangi bir kod üzerinde çalışmaya başlamadan önce **Güvenlikle İlgili Hususlar** bölümünü okuduğunuzdan emin olunuz.
 
 Herhangi bir sorunuz varsa, cevap için online kaynaklarda arama yapabilir arayabilir, [Ethereum Stackexchange' de ](https://ethereum.stackexchange.com/) sorabilir veya [glitter kanalımızı](https://gitter.im/ethereum/solidity/) deneyebilirsiniz.
 
@@ -58,7 +58,7 @@ Topluluktan bazı gönüllüler bu belgeyi farklı dillere çevirmekte bizlere y
   - Sürüm Oluşturma Hakkında Önemli Bilgiler
 + Solidty Örnekleri
   - Oylama
-  - Kapalı Açık Arttırma
+  - Gizli Açık Arttırma
   - Güvenli Uzaktan Satın Alım
   - Mikro Ödeme Kanalı
 + Derinlemesine Solidty
@@ -166,7 +166,7 @@ Bu sözleşme henüz, Ethereum tarafından oluşturulan altyapıdan dolayı, ata
 
 ## Alt Para Birimi Örneği
 
-Aşağıdaki sözleşme, bir kripto para biriminin en basit şeklini oluşturmak amacıyla yazılmıştır. Ethereum akıllı sözleşmeleri ile kripto para üretmek mümkündür, ancak bunu yalnızca sözleşmeyi oluşturan kişi yapabilir (farklı bir düzenleme planı uygulamak mümkündür). Ağdaki herkes, kullanıcı adı ve şifre ile bir yere kaydolmaya gerek duymadan birbirlerine para gönderebilir ve ödeme alabilirler - bunu yaparken tek ihtiyaçları olan bir Ethereum anahtar çiftidir.
+Aşağıdaki sözleşme, en basit şekilde bir kripto para oluşturmak amacıyla yazılmıştır. Ethereum akıllı sözleşmeleri ile kripto para üretmek mümkündür, ancak bunu yalnızca sözleşmeyi oluşturan kişi yapabilir (farklı bir düzenleme planı uygulamak mümkündür). Ağdaki herkes, kullanıcı adı ve şifre ile bir yere kaydolmaya gerek duymadan birbirlerine para gönderebilir ve ödeme alabilirler - bunu yaparken tek ihtiyaçları olan bir Ethereum anahtar çiftidir.
 
 ```
 pragma solidity ^0.5.0;
@@ -204,14 +204,14 @@ contract Coin {
 
 Bu sözleşme bazı yeni konseptler de ortaya koyuyor, tek tek üzerinden geçelim.
 
-`address public minter;` satırı, genel olarak erişilebilir bir `adres` tipi durum değişkenini bildirir. `Adres` türü, aritmetik işlemlere izin vermeyen 160 bitlik bir değerdir. Bu tür, sözleşmedeki adreslerinin veya dış kişilere ait anahtar çiftlerinin depolanması için uygundur. `Public` anahtar sözcüğü, durum değişkeninin geçerli değerine sözleşmenin dışından erişilmesine olanak sağlayan bir işleve sahiptir. Bu anahtar kelime kullanılmadığı takdirde, diğer sözleşmelerden bu değişkene erişmenin yolu yoktur. Derleyici veya geliştirici tarafından oluşturulan işlevin kodu kabaca aşağıdakine eşittir (şimdilik `ignore` ve `view` i görmezden gelelim):
+`address public minter;` satırı, genel olarak erişilebilir bir `adres` tipi durum değişkenini bildirir. `Adres` türü, aritmetik işlemlere izin vermeyen 160 bitlik bir değerdir. Bu tür, sözleşmedeki adreslerinin veya dış kişilere ait anahtar çiftlerinin depolanması için uygundur. `Public` anahtar sözcüğü, durum değişkeninin geçerli değerine sözleşmenin dışından erişilmesine olanak sağlayan bir işleve sahiptir. Bu anahtar kelime kullanılmadığı takdirde, diğer sözleşmelerden bu değişkene erişmeye izin verilmez. Derleyici veya geliştirici tarafından oluşturulan fonksiyonun kodu kabaca aşağıdaki gibidir (şimdilik `ignore` ve `view` i görmezden gelelim):
 
 ```
 function minter() external view returns (address) { return minter; }
 ```
-Elbette, tam olarak bunun gibi bir işlev eklemek kodun çalışmamasına sebep olurdu. Çünkü aynı ada sahip bir işlevimiz ve yine aynı isimde bir durum değişkenimiz olacaktı. Ama umarım, siz mantığı anladınız - derleyici sizin için bunu farkedecektir. 
+Elbette, tam olarak bunun gibi bir fonksiyon eklemek kodun çalışmamasına sebep olabilir. Çünkü bu durumda aynı isme sahip bir fonksiyonumuz ve yine aynı isimde bir durum değişkenimiz olacaktır. Ama umarım, siz mantığı anladınız - derleyici sizin için bunu farkedecektir. 
 
-Bir sonraki satırda bulunan `mapping (address => uint) public balances;` yine bir public durum değişkeni yaratır, ancak bu daha karmaşık bir veri türüdür. Bu tür, sözleşmedeki adresleri, işaretsiz tamsayılarla eşleştirmek için kullanılır. Bu eşlemeleri fiziksel olarak betimlemeye çalışalım: Olası her anahtarın, başlangıçtan itibaren var olan ve bayt değerinin tümü sıfıra eşit bir değere atandığı hash tablolarını düşünebiliriz . Bu benzetme üzerine çok kafa yormayın, çünkü bir eşlemenin tüm anahtarlarının bir listesini ya da tüm değerlerin bir listesini elde etmek mümkün değildir. Bu nedenle, genel kavramı  aklınızda bulundurun (ya da daha iyisi bir liste yapın ya da daha gelişmiş bir veri eşleme türü kullanın) ya da bunun gerekmediği bir sistem oluşturun. Public anahtar kelimesi tarafından oluşturulan getter fonksiyonu bu durumda biraz daha karmaşıktır. Bu fonksiyon kabaca aşağıdaki gibi görünüyor:
+Bir sonraki satırda bulunan `mapping (address => uint) public balances;` yine bir public durum değişkeni yaratır, ancak bu daha karmaşık bir veri türüdür. Bu tür, sözleşmedeki adresleri, işaretsiz tamsayılarla eşleştirmek için kullanılır. Bu eşlemeleri fiziksel olarak betimlemeye çalışalım: Olası her anahtarın, başlangıçtan itibaren var olan ve bayt değerinin tümü sıfıra eşit bir değere atandığı hash tabloları düşünebiliriz . Bu benzetme üzerine çok kafa yormayın, çünkü bir eşlemenin tüm anahtarlarının bir listesini ya da tüm değerlerin bir listesini elde etmek mümkün değildir. Bu nedenle, genel kavramı  aklınızda bulundurmak (ya da daha iyisi bir liste yaparak gelişmiş bir veri eşleme türü kullanmak) ya da bunun gerekmediği bir sistem oluşturmak daha iyi bir çözümdür. Public anahtar kelimesi tarafından oluşturulan getter fonksiyonu bu durumda biraz daha karmaşıktır. Bu fonksiyon kabaca aşağıdaki gibi görünür:
 
 ```
 function balances(address _account) external view returns (uint) {
@@ -219,10 +219,10 @@ function balances(address _account) external view returns (uint) {
 }
 ```
 
-Gördüğünüz gibi, tek bir hesabın bakiyesini kolayca sorgulamak için bu işlevi kullanabilirsiniz.
+Gördüğünüz gibi, tek bir hesabın bakiyesini kolayca sorgulamak için bu fonksiyonu kullanabilirsiniz.
 
 
-`event Sent(address from, address to, uint amount);` satırı, gönderme fonksiyonunun son satırında yayınlanan “event(olay)” olarak adlandırılır. Kullanıcı arayüzleri (tabii ki sunucu uygulamalarında olduğu gibi) blok zincirinde yayınlanan olayları fazla maliyet olmadan dinleyebilir. Yayınlandığı anda dinleyici, işlemlerin izlenmesini kolaylaştıran, miktar, zaman ve sözleşme argümanları gibi bilgilere de sahip olur. Bu olayı dinlemek için, aşağıdaki JavaScript kodunu kullanmanız gerekir ( Burada Coin'in web3.js veya benzeri bir modül üzerinden yaratılmış bir sözleşme nesnesi olduğu varsayılmaktadır):
+`event Sent(address from, address to, uint amount);` satırı, gönderme fonksiyonunun son satırında yayınlanan “olay(event)” olarak adlandırılır. Kullanıcı arayüzleri (tabii ki sunucu uygulamalarında olduğu gibi) blok zincirinde yayınlanan olayları fazla maliyet olmadan dinleyebilir. Yayınlandığı anda dinleyici, işlemlerin izlenmesini kolaylaştıran, miktar, zaman ve sözleşme argümanları gibi bilgilere de sahip olur. Bu olayı dinlemek için, aşağıdaki JavaScript kodunu kullanmanız gerekir ( Burada Coin'in web3.js veya benzeri bir modül üzerinden yaratılmış bir sözleşme nesnesi olduğu varsayılmaktadır):
 
 ```
 Coin.Sent().watch({}, '', function(error, result) {
@@ -238,7 +238,7 @@ Coin.Sent().watch({}, '', function(error, result) {
 ```
 Burada otomatik olarak üretilen `balances` fonksiyonunun kullanıcı arayüzü tarafından nasıl çağrıldığına lütfen dikkat edin.
 
-Constructer fonksiyonu,yalnızca sözleşmenin oluşturulması sırasında belirtilen ve daha sonra çağrılamayan özel bir fonksiyondur. Sözleşmeyi oluşturan kişinin adresini kalıcı olarak saklar: `msg` (`tx` ve `block` ile birlikte), blok zincirine erişime izin veren bazı özellikleri içeren özel bir global değişkendir. `msg.sender` ise her zaman geçerli (harici) işlev çağrısının geldiği adresdir.
+Constructer fonksiyonu,yalnızca sözleşmenin oluşturulması sırasında belirtilen ve daha sonra çağrılamayan özel bir fonksiyondur. Sözleşmeyi oluşturan kişinin adresini kalıcı olarak saklar: `msg` (`tx` ve `block` ile birlikte), blok zincirine erişime izin veren bazı özellikleri içeren özel bir global değişkendir. `msg.sender` ise her zaman geçerli (harici) fonksiyon çağrısının geldiği adrestir.
 
 Son olarak, sözleşmenin sonunda belirtilip sonrasında kullanıcılar ve diğer sözleşmeler tarafından çağrılabilecek fonksiyonlar `mint` ve `send` fonksiyonlarıdır. `Mint` fonksiyonu sözleşmeyi oluşturan dışında herhangi biri tarafından çağrılırsa, hiçbir değişime sebep olmayacaktır. Bu durum `require` isimli argümanının `false` olması durumunda herhangi bir değişikliği geri çeviren özel bir fonksiyon tarafından güvence altına alınmaktadır. İkinci `require` çağrısı ise, daha sonra taşma hatalarına neden olabilecek çok fazla para olmasını engellemek içindir.
 
@@ -315,7 +315,7 @@ Gerçekleştirilmek istenen her bir işlem, işlemi gerçekleştirmek için gere
 
 Ethereum Sanal Makinesi (EVM), aşağıdaki paragraflarda açıklanacağı üzere verileri depolama, bellek ve yığın isimli üç farklı alanda muhafaza eder.
 
-Her hesap, işlev çağrıları ve işlemler arasında kalıcı olan, **depolama** adı verilen bir veri alanına sahiptir. Depolama, 256-bit kelimeleri 256-bit kelimelere eşleyen anahtar-değer ikilisini barındırır. Depolamayı bir sözleşme içinde belirtmek mümkün değildir. Depolamayı okumak pahalı bir işlemken değiştirmek çok daha büyük maliyetlere sebep olabilir. Bir sözleşme, kendisinden başka hiçbir depolamayı okuyamaz veya müdahale edemez.
+Her hesap, fonksiyon çağrıları ve işlemler arasında kalıcı olan, **depolama** adı verilen bir veri alanına sahiptir. Depolama, 256-bit kelimeleri 256-bit kelimelere eşleyen anahtar-değer ikilisini barındırır. Depolamayı bir sözleşme içinde belirtmek mümkün değildir. Depolamayı okumak pahalı bir işlemken değiştirmek çok daha büyük maliyetlere sebep olabilir. Bir sözleşme, kendisinden başka hiçbir depolamayı okuyamaz veya müdahale edemez.
 
 İkinci veri alanı ise, bir sözleşmenin aldığı her yeni işlem çağrısı sırasında yeniden elde ettiği **bellek veya hafıza** adını verdiğimiz alandır. Bellek doğrusaldır ve bayt düzeyinde adreslenebilir, ancak yazmalar 8 bit veya 256 bit genişliğinde olabilirken, okumalar 256 bit genişliğiyle sınırlıdır. Önceden dokunulmamış bir bellek alanına erişirken(okurken veya yazarken) bu alan(256-bit) yazıldığı alanın(8 bit) ötesine genişletilebilir. Bu genişleme sırasında ortaya çıkabilecek ekstra gaz maliyeti gönderici tarafından ödenmelidir. Bellek, büyüdükçe daha maliyet de artacaktır(Söz konusu artış miktarın karesi şeklinde olacaktır).
 
@@ -357,7 +357,7 @@ Bir zincirden kodu kaldırmanın tek yolu, söz konusu adresteki bir sözleşmen
 
 > Bir sözleşmenin kodu, `selfdestruct` çağrısı içermese bile, bu işlemi `delegatecall` veya `callcode` kullanarak yapabilir.
 
-Sözleşmelerinizi devre dışı bırakmak istiyorsanız, bunun yerine tüm işlevlerin geri alınmasına neden olan bazı iç durumları değiştirerek bunları devre dışı bırakmalısınız. Bu, Ether'i derhal iade ettiğinden sözleşmeyi kullanmayı imkansız kılar.
+Sözleşmelerinizi devre dışı bırakmak istiyorsanız, bunun yerine tüm fonksiyonların geri alınmasına neden olan bazı iç durumları değiştirerek bunları devre dışı bırakmalısınız. Bu, Ether'i derhal iade ettiğinden sözleşmeyi kullanmayı imkansız kılar.
 
 ### [Uyarı](#)
 
@@ -435,7 +435,7 @@ Arch Linux ayrıca en son geliştirme sürümüyle sınırlı olsa da aşağıda
 ```
 pacman -S solidity
 ```
-Solidity derleyicisini, kaynak kodlu bir sürüm olarak Homebrew aracılığıyla da dağıtıyoruz. Önceden oluşturulmuş dosyalar şu anda desteklenmiyor olabilir.
+Solidity derleyicisini, kaynak kodlu bir sürüm olarak Homebrew aracılığıyla da indirebilirsiniz. Önceden oluşturulmuş dosyalar şu anda desteklenmiyor olabilir.
 
 ```
 brew update
@@ -475,11 +475,12 @@ Linux'un Solidity sürümleri için aşağıdaki ön koşul dosyalarını kurman
 
 ### MacOS - Önkoşullar
 
-MacOS için, en son Xcode sürümünün yüklü olduğundan emin olun. Bu, Clang C ++ derleyicisini, Xcode IDE'yi ve OS X'te C ++ uygulamaları oluşturmak için gerekli olan diğer Apple geliştirme araçlarını içerir. İlk kez Xcode yüklüyorsanız veya yeni bir sürüm yüklediyseniz, onaylamanız gerekir. Komut satırından işlem yapabilmeniz için önce lisansı onaylamanız gerekir:
+MacOS için, en son Xcode sürümünün yüklü olduğundan emin olun. Bu, Clang C ++ derleyicisini, Xcode IDE'yi ve OS X'te C ++ uygulamaları oluşturmak için gerekli olan diğer Apple geliştirme araçlarını içerir. İlk kez Xcode yüklüyorsanız veya yeni bir sürüm yüklediyseniz önce lisansı onaylamanız gerekir. Komut satırına şu komutu girmelisiniz:
 
 ```
 sudo xcodebuild -license accept
 ```
+
 OS X sürümlerimiz, harici ön koşul dosyalarını kurmak için [Homebrew paket yöneticisini kurmanızı](http://brew.sh/) gerektirir. İşte yine sıfırdan başlamak istiyorsanız, [Homebrew'ü buradan kaldırabilirsiniz](https://github.com/Homebrew/homebrew/blob/master/share/doc/homebrew/FAQ.md#how-do-i-uninstall-homebrew).
 
 ### Windows - Önkoşullar
@@ -516,7 +517,7 @@ git remote add personal git@github.com:[username]/solidity.git
 
 ### Dış Bağımlılıklar
 
-Gerekli tüm dış bağımlılıkları macOS, Windows ve sayısız Linux dağıtımına yükleyen bir yardımcı programımız var:
+Gerekli tüm dış bağımlılıkları macOS, Windows ve sayısız Linux dağıtımına yükleyen bir yardımcı programımıza erişmek için:
 
 ```
 ./scripts/install_deps.sh
@@ -529,9 +530,9 @@ scripts\install_deps.bat
 
 ### Komut Satırı Oluşturma
 
-Buraya geçilmeden önce bir önceki başlıkta açıklanan (bknz. Dış Bağımlılıklar) ön koşulların kurulmuş olduğundan emin olun.
+Buraya geçmeden önce bir önceki başlıkta açıklanan (bknz. Dış Bağımlılıklar) ön koşulların kurulmuş olduğundan emin olun.
 
-Solidity projeleri yapıyı sağlamlaştırmak için CMake'i kullanır. Tekrarlanan yapıları hızlandırmak için ccache yüklemek isteyebilirsiniz. CMake otomatik ccache'i otomatik olarak yükleyecektir. Solidity dilinde kodlama yapmak Linux, macOS ve diğer işletim sistemleri için ile oldukça benzer yapıdadır:
+Solidity projeleri yapıyı sağlamlaştırmak için CMake'i kullanır. Tekrarlanan yapıları hızlandırmak için Ccache yüklemek isteyebilirsiniz. CMake, Ccache'i otomatik olarak yükleyecektir. Solidity dilinde kodlama yapmak Linux, macOS ve diğer işletim sistemleri için ile oldukça benzer yapıdadır:
 
 ```
 mkdir build
@@ -540,6 +541,7 @@ cmake .. && make
 ```
 
 Daha da kolay olsun derseniz:
+
 ```
 ./scripts/build.sh
 ```
@@ -549,7 +551,8 @@ mkdir build
 cd build
 cmake -G "Visual Studio 15 2017 Win64" ..
 ```
-Bu ikinci komut dizisi, o derleme dizininde solidity.sln oluşturulmasına neden olur. Bu dosyaya çift tıklamak, Visual Studio'nun açılmasına yol açar. **Release** yapılandırma sistemini öneririz, ancak diğerleri de sorunsuz çalışacaktır.
+
+Bu ikinci komut dizisi, o derleme dizininde solidity.sln oluşturulmasına neden olur. Bu dosyaya çift tıklamak, Visual Studio'nun açılmasına yol açacaktır. **Release** yapılandırma sistemini kullanmanızı öneririz, ancak diğerleri de sorunsuz çalışacaktır.
 
 ```
 cmake --build . --config Release
@@ -560,11 +563,11 @@ Hangi CMake seçeneklerinin mevcut olduğunu merak ediyorsanız basitçe  `cmake
 
 ### SMT Çözücüleri
 
-Solidity programları, SMT çözücülerine karşı geliştirilebilir hatta eğer sistemde bulunurlarsa bunu varsayılan olarak yaparlar. Her çözücü Cmake seçeneği ile devre dışı bırakılabilir.
+Solidity programları, SMT çözücülerine dirençli geliştirilebilir hatta eğer sistemde bulunurlarsa bunu varsayılan olarak yaparlar. Yine de her çözücü Cmake ile devre dışı bırakılabilir yapıdadır.
 
-Not: Bazı durumlarda, derleme hataları için olası bir geçici çözüm de kullanılabilirler.
+Not: Bazı durumlarda, derleme hataları için olası bir geçici çözüm de kullanılabilir.
 
-Yapılması gereken, oluşturma klasörünün içinde, varsayılan olarak etkin olan çözücüleri devre dışı bırakmaktır:
+Yapılması gereken, oluşturma klasörü içinde, varsayılan olarak aktif olan çözücüleri devre dışı bırakmaktır:
 
 ```
 # Sadece Z3 SMT çözücüsünü devre dışı bırakır.
@@ -597,7 +600,7 @@ Bir yayın öncesi örneği: `0.4.9-nightly.2017.1.17+commit.6ecb4aa3.Emscripten
 
 ### Sürüm Oluşturma Hakkında Önemli Bilgiler
 
-Bir versiyon değişikliği yapıldığında, sadece yama seviyesi değişikliklerinin yapıldığını varsaydığımız için yama sürümü seviyesi teste tabi tutulur. Değişiklikler birleştirildiğinde, sürüm semver ve değişimin ciddiyetine göre test edilmelidir. Son olarak, mevcut gecelik derlemenin sürümüyle her zaman yayınlanır, ancak diğerlerinden farklı olarak bu sürümlerde `prerelease` belirteci yoktur.
+Bir versiyon değişikliği yapıldığında, sadece yama seviyesi değişikliklerinin yapıldığını varsaydığımız için yama sürümü seviyesi teste tabi tutulur. Değişiklikler ana branş ile birleştirildiğinde, sürüm semver ve değişimin ciddiyetine göre test edilmelidir. Son olarak, yeni sürüm her zaman gecelik derleme değişiklikleri gözetilerek yayınlanır, ancak diğerlerinden farklı olarak bu sürümlerde `prerelease` belirteci yoktur.
 
 **Örnek:**
 
@@ -614,13 +617,13 @@ Bu durum [pragma sürüm sistemi](https://solidity.readthedocs.io/en/v0.5.4/layo
 
 ## Oylama
 
-Aşağıdaki sözleşme oldukça karmaşık olmakla birlikte, Solidity'e ait birçok özelliği de sergiliyor. Aşağıdaki, bir oylama sözleşmesidir. Elektronik oylamanın temel sorunları, doğru kişilere nasıl oy hakkı verileceği ve manipülasyonun nasıl önleneceğidir. Buradaki tüm sorunları çözmeyeceğiz, ancak en azından temsil edilen oylamanın nasıl yapılabileceğini göstereceğiz, böylece oy sayımı aynı anda otomatik ve tamamen şeffaf olacak.
+Aşağıdaki sözleşme oldukça karmaşık olmakla birlikte, Solidity'e ait birçok özelliği de inceleme fırsatı vermektedir. Aşağıdaki, bir oylama sözleşmesidir. Elektronik oylamada karşılaşılan temel problemler; doğru kişilere nasıl oy hakkı verileceği ve manipülasyonun nasıl önleneceğidir. Aşağıdaki sözleşme ile bu sorunların tümünü çözmeyeceğiz, ancak en azından temsil edilen oylamanın nasıl yapılabileceğini göstereceğiz, böylece oy sayımı eş zamanlı, otomatik ve tamamen şeffaf olabilecek.
 
-Fikir, oy başına bir sözleşme oluşturmak ve her sözleşme için kısa bir isim oluşturmaktır. Daha sonra başkan olarak görev yapan sözleşmenin yaratıcısı her bir adrese ayrı ayrı oy kullanma hakkı tanıyacaktır.
+Fikir, kullanılan her oy başına bir sözleşme oluşturmak ve her sözleşme için kısa bir isim oluşturmaktır. Daha sonra başkan olarak görev yapan sözleşmenin yaratıcısı her bir adrese ayrı ayrı oy kullanma hakkı tanıyacaktır.
 
-Adreslerin arkasındaki kişiler daha sonra kendilerini oylayabilir veya oylarını güvendikleri bir kişiye devredebilirler.
+Adreslerin arkasındaki kişiler oylama sırasında kendilerini oylayabilir veya oylarını güvendikleri bir kişiye devredebilirler.
 
-Oylama süresinin sonunda, winningProposal() en yüksek oyu alarak oylamayı kazanacaktır.
+Oylama süresinin sonunda, winningProposal() fonksiyonu ile en yüksek oyu alan belirlenecek ve bu kişi oylamayı kazanacaktır.
 
 ```
 pragma solidity >=0.4.22 <0.6.0;
@@ -777,10 +780,547 @@ contract Ballot {
 ```
 ### Muhtemel İyileştirmeler
 
-Şu anda, tüm katılımcılara oy kullanma hakkı atamak için birçok işleme ihtiyaç var. Daha iyi bir yol düşünebilir misin?
+Şu anda, tüm katılımcılara oy kullanma hakkı atamak için birçok işleme ihtiyaç var. Daha iyi bir yol düşünebilir misiniz?
 
 
+## Gizli Açık Arttırma
+
+Bu bölümde, Ethereum'da tamamen gizli bir açık artırma sözleşmesi oluşturmanın ne kadar kolay olduğunu göstereceğiz. Herkesin verilen teklifleri görebileceği gizli olmayan bir açık artırmayla başlayacağız ve daha sonra bu sözleşmeyi teklif süresi sona erene kadar gerçek teklifi görmenin mümkün olmadığı gizli bir açık artırmaya çevireceğiz.
+
+### Gizli Olmayan Bir Açık Arttırma
+
+Aşağıdaki basit ve gizli olmayan açık artırma sözleşmesinin genel fikri, herkesin ihale sürecinde açık olarak teklif verebilmesidir. Teklifi verenler, tekliflerine vadettikleri para/Ether ile bağlanırlar. En yüksek teklifin bir başkasının teklifi ile aşılması durumunda, eski en yüksek teklif bozulmuş olur. İhale süresinin bitmesinin ardından, geçerli teklifi veren ve satıcı manuel olarak sözleşmeyi onaylayarak ürün veya servis alışverişini tamamlarlar - sözleşmeler bu süreç olmadan aktif hale gelemezler.
+
+```
+pragma solidity >=0.4.22 <0.6.0;
+
+contract SimpleAuction {
+    // Parameters of the auction. Times are either
+    // absolute unix timestamps (seconds since 1970-01-01)
+    // or time periods in seconds.
+    address payable public beneficiary;
+    uint public auctionEndTime;
+
+    // Current state of the auction.
+    address public highestBidder;
+    uint public highestBid;
+
+    // Allowed withdrawals of previous bids
+    mapping(address => uint) pendingReturns;
+
+    // Set to true at the end, disallows any change.
+    // By default initialized to `false`.
+    bool ended;
+
+    // Events that will be emitted on changes.
+    event HighestBidIncreased(address bidder, uint amount);
+    event AuctionEnded(address winner, uint amount);
+
+    // The following is a so-called natspec comment,
+    // recognizable by the three slashes.
+    // It will be shown when the user is asked to
+    // confirm a transaction.
+
+    /// Create a simple auction with `_biddingTime`
+    /// seconds bidding time on behalf of the
+    /// beneficiary address `_beneficiary`.
+    constructor(
+        uint _biddingTime,
+        address payable _beneficiary
+    ) public {
+        beneficiary = _beneficiary;
+        auctionEndTime = now + _biddingTime;
+    }
+
+    /// Bid on the auction with the value sent
+    /// together with this transaction.
+    /// The value will only be refunded if the
+    /// auction is not won.
+    function bid() public payable {
+        // No arguments are necessary, all
+        // information is already part of
+        // the transaction. The keyword payable
+        // is required for the function to
+        // be able to receive Ether.
+
+        // Revert the call if the bidding
+        // period is over.
+        require(
+            now <= auctionEndTime,
+            "Auction already ended."
+        );
+
+        // If the bid is not higher, send the
+        // money back.
+        require(
+            msg.value > highestBid,
+            "There already is a higher bid."
+        );
+
+        if (highestBid != 0) {
+            // Sending back the money by simply using
+            // highestBidder.send(highestBid) is a security risk
+            // because it could execute an untrusted contract.
+            // It is always safer to let the recipients
+            // withdraw their money themselves.
+            pendingReturns[highestBidder] += highestBid;
+        }
+        highestBidder = msg.sender;
+        highestBid = msg.value;
+        emit HighestBidIncreased(msg.sender, msg.value);
+    }
+
+    /// Withdraw a bid that was overbid.
+    function withdraw() public returns (bool) {
+        uint amount = pendingReturns[msg.sender];
+        if (amount > 0) {
+            // It is important to set this to zero because the recipient
+            // can call this function again as part of the receiving call
+            // before `send` returns.
+            pendingReturns[msg.sender] = 0;
+
+            if (!msg.sender.send(amount)) {
+                // No need to call throw here, just reset the amount owing
+                pendingReturns[msg.sender] = amount;
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /// End the auction and send the highest bid
+    /// to the beneficiary.
+    function auctionEnd() public {
+        // It is a good guideline to structure functions that interact
+        // with other contracts (i.e. they call functions or send Ether)
+        // into three phases:
+        // 1. checking conditions
+        // 2. performing actions (potentially changing conditions)
+        // 3. interacting with other contracts
+        // If these phases are mixed up, the other contract could call
+        // back into the current contract and modify the state or cause
+        // effects (ether payout) to be performed multiple times.
+        // If functions called internally include interaction with external
+        // contracts, they also have to be considered interaction with
+        // external contracts.
+
+        // 1. Conditions
+        require(now >= auctionEndTime, "Auction not yet ended.");
+        require(!ended, "auctionEnd has already been called.");
+
+        // 2. Effects
+        ended = true;
+        emit AuctionEnded(highestBidder, highestBid);
+
+        // 3. Interaction
+        beneficiary.transfer(highestBid);
+    }
+}
+
+```
+### Gizli Açık Arttırma
+
+Aşağıdaki gibi bir gizli açık arttırma sözleşmesi elde etmek için bir önceki açık artırma sözleşmesine eklemeler yapalım. Gizli bir açık artırmanın avantajı, ihale süresinin sonuna doğru zaman baskısı olmamasıdır. Blockchain gibi şeffaf bir işlem platformunda gizli bir açık artırma oluşturmak, çelişkili bir durum gibi görünebilir; ancak kriptografi bu durumda yardımımıza yetişiyor.
+
+İhale süreci boyunca, teklif veren kişi teklifini gerçekten göndermez, teklif şifrelenmiş(hashed) şekilde gönderilir. Yeterince uzun iki teklifin şifrelenince aynı değere tekabül etmesi pratik olarak imkansıza yakın kabul edildiğinden, teklif sahipleri için sakıncalı bir durum yoktur. İhale süresinin bitmesinin ardından, teklif verenlerin tekliflerini açıklamaları istenir: Şifrelenmemiş olarak gönderdikleri tekliflerin, burada açıkladıkları değerler ile aynı olup olmadığını kontrol eden bir sözleşme yardımı ile en yüksek teklifi veren ihaleyi kazanmış olur. 
+
+Karşılaşılabilecek bir sorun, gizli açık arttırmada teklif veren için teklifin aynı anda **bağlayıcı ve gizli** hale nasıl getirileceğidir: Teklif verenin, açık artırmayı kazandıktan sonra para göndermemesini önlemenin tek yolu, bu parayı teklifini yaptığı sırada ondan temin etmektir. Para transferleri Ethereum'da gizlenemediğinden, herkes gönderilen değeri görebilir.
+
+Aşağıdaki sözleşme, bu sorunu en yüksek tekliften daha büyük olan herhangi bir değeri kabul ederek çözmektedir. Tabii ki bu sadece tekliflerin ifşası aşamasında kontrol edilebileceğinden, bazı tekliflerin kasıtlı olarak geçersiz şekilde gönderilmesine sebep olabilir. Bu sayede ihaleye katılanlar birkaç tane çok yüksek veya çok alçak geçersiz teklifle rekabeti kızıştırabilirler.
+
+```
+pragma solidity >0.4.23 <0.6.0;
+
+contract BlindAuction {
+    struct Bid {
+        bytes32 blindedBid;
+        uint deposit;
+    }
+
+    address payable public beneficiary;
+    uint public biddingEnd;
+    uint public revealEnd;
+    bool public ended;
+
+    mapping(address => Bid[]) public bids;
+
+    address public highestBidder;
+    uint public highestBid;
+
+    // Allowed withdrawals of previous bids
+    mapping(address => uint) pendingReturns;
+
+    event AuctionEnded(address winner, uint highestBid);
+
+    /// Modifiers are a convenient way to validate inputs to
+    /// functions. `onlyBefore` is applied to `bid` below:
+    /// The new function body is the modifier's body where
+    /// `_` is replaced by the old function body.
+    modifier onlyBefore(uint _time) { require(now < _time); _; }
+    modifier onlyAfter(uint _time) { require(now > _time); _; }
+
+    constructor(
+        uint _biddingTime,
+        uint _revealTime,
+        address payable _beneficiary
+    ) public {
+        beneficiary = _beneficiary;
+        biddingEnd = now + _biddingTime;
+        revealEnd = biddingEnd + _revealTime;
+    }
+
+    /// Place a blinded bid with `_blindedBid` =
+    /// keccak256(abi.encodePacked(value, fake, secret)).
+    /// The sent ether is only refunded if the bid is correctly
+    /// revealed in the revealing phase. The bid is valid if the
+    /// ether sent together with the bid is at least "value" and
+    /// "fake" is not true. Setting "fake" to true and sending
+    /// not the exact amount are ways to hide the real bid but
+    /// still make the required deposit. The same address can
+    /// place multiple bids.
+    function bid(bytes32 _blindedBid)
+        public
+        payable
+        onlyBefore(biddingEnd)
+    {
+        bids[msg.sender].push(Bid({
+            blindedBid: _blindedBid,
+            deposit: msg.value
+        }));
+    }
+
+    /// Reveal your blinded bids. You will get a refund for all
+    /// correctly blinded invalid bids and for all bids except for
+    /// the totally highest.
+    function reveal(
+        uint[] memory _values,
+        bool[] memory _fake,
+        bytes32[] memory _secret
+    )
+        public
+        onlyAfter(biddingEnd)
+        onlyBefore(revealEnd)
+    {
+        uint length = bids[msg.sender].length;
+        require(_values.length == length);
+        require(_fake.length == length);
+        require(_secret.length == length);
+
+        uint refund;
+        for (uint i = 0; i < length; i++) {
+            Bid storage bidToCheck = bids[msg.sender][i];
+            (uint value, bool fake, bytes32 secret) =
+                    (_values[i], _fake[i], _secret[i]);
+            if (bidToCheck.blindedBid != keccak256(abi.encodePacked(value, fake, secret))) {
+                // Bid was not actually revealed.
+                // Do not refund deposit.
+                continue;
+            }
+            refund += bidToCheck.deposit;
+            if (!fake && bidToCheck.deposit >= value) {
+                if (placeBid(msg.sender, value))
+                    refund -= value;
+            }
+            // Make it impossible for the sender to re-claim
+            // the same deposit.
+            bidToCheck.blindedBid = bytes32(0);
+        }
+        msg.sender.transfer(refund);
+    }
+
+    // This is an "internal" function which means that it
+    // can only be called from the contract itself (or from
+    // derived contracts).
+    function placeBid(address bidder, uint value) internal
+            returns (bool success)
+    {
+        if (value <= highestBid) {
+            return false;
+        }
+        if (highestBidder != address(0)) {
+            // Refund the previously highest bidder.
+            pendingReturns[highestBidder] += highestBid;
+        }
+        highestBid = value;
+        highestBidder = bidder;
+        return true;
+    }
+
+    /// Withdraw a bid that was overbid.
+    function withdraw() public {
+        uint amount = pendingReturns[msg.sender];
+        if (amount > 0) {
+            // It is important to set this to zero because the recipient
+            // can call this function again as part of the receiving call
+            // before `transfer` returns (see the remark above about
+            // conditions -> effects -> interaction).
+            pendingReturns[msg.sender] = 0;
+
+            msg.sender.transfer(amount);
+        }
+    }
+
+    /// End the auction and send the highest bid
+    /// to the beneficiary.
+    function auctionEnd()
+        public
+        onlyAfter(revealEnd)
+    {
+        require(!ended);
+        emit AuctionEnded(highestBidder, highestBid);
+        ended = true;
+        beneficiary.transfer(highestBid);
+    }
+}
+
+```
+
+## Güvenli Uzaktan Satın Alım
+
+```
+pragma solidity >=0.4.22 <0.6.0;
+
+contract Purchase {
+    uint public value;
+    address payable public seller;
+    address payable public buyer;
+    enum State { Created, Locked, Inactive }
+    State public state;
+
+    // Ensure that `msg.value` is an even number.
+    // Division will truncate if it is an odd number.
+    // Check via multiplication that it wasn't an odd number.
+    constructor() public payable {
+        seller = msg.sender;
+        value = msg.value / 2;
+        require((2 * value) == msg.value, "Value has to be even.");
+    }
+
+    modifier condition(bool _condition) {
+        require(_condition);
+        _;
+    }
+
+    modifier onlyBuyer() {
+        require(
+            msg.sender == buyer,
+            "Only buyer can call this."
+        );
+        _;
+    }
+
+    modifier onlySeller() {
+        require(
+            msg.sender == seller,
+            "Only seller can call this."
+        );
+        _;
+    }
+
+    modifier inState(State _state) {
+        require(
+            state == _state,
+            "Invalid state."
+        );
+        _;
+    }
+
+    event Aborted();
+    event PurchaseConfirmed();
+    event ItemReceived();
+
+    /// Abort the purchase and reclaim the ether.
+    /// Can only be called by the seller before
+    /// the contract is locked.
+    function abort()
+        public
+        onlySeller
+        inState(State.Created)
+    {
+        emit Aborted();
+        state = State.Inactive;
+        seller.transfer(address(this).balance);
+    }
+
+    /// Confirm the purchase as buyer.
+    /// Transaction has to include `2 * value` ether.
+    /// The ether will be locked until confirmReceived
+    /// is called.
+    function confirmPurchase()
+        public
+        inState(State.Created)
+        condition(msg.value == (2 * value))
+        payable
+    {
+        emit PurchaseConfirmed();
+        buyer = msg.sender;
+        state = State.Locked;
+    }
+
+    /// Confirm that you (the buyer) received the item.
+    /// This will release the locked ether.
+    function confirmReceived()
+        public
+        onlyBuyer
+        inState(State.Locked)
+    {
+        emit ItemReceived();
+        // It is important to change the state first because
+        // otherwise, the contracts called using `send` below
+        // can call in again here.
+        state = State.Inactive;
+
+        // NOTE: This actually allows both the buyer and the seller to
+        // block the refund - the withdraw pattern should be used.
+
+        buyer.transfer(value);
+        seller.transfer(address(this).balance);
+    }
+}
+
+```
+## Mikro Ödeme Kanalı
+
+In this section we will learn how to build an example implementation of a payment channel. It uses cryptographic signatures to make repeated transfers of Ether between the same parties secure, instantaneous, and without transaction fees. For the example, we need to understand how to sign and verify signatures, and setup the payment channel.
+
+Bu bölümde, örnek bir ödeme kanalı uygulamasının nasıl geliştirileceğini öğreneceğiz. Aynı taraflar arasında tekrarlanan Ether transferini güvenli, hızlı ve işlem ücreti ödemeden yapmak için kriptografik imzalar kullanır. Vereceğimiz örnek için imzayı nasıl oluşturacağımızı, doğrulayacağımızı ve ödeme kanalını nasıl kuracağımızı anlamamız gerekiyor.
+
+### İmza Oluşturma ve Doğrulama
+
+Alice'in Bob'a bir miktar Ether göndermek istediğini düşünün, yani Alice gönderen, Bob ise alıcıdır.
+
+Alice'in kriptografik olarak imzalanmış mesajları zincir dışında (örneğin, e-posta yoluyla) Bob'a göndermesi gerekir ve bu bir bakıma çek yazmaya benzer.
+
+Alice ve Bob, Ethereum ile yapılan akıllı sözleşmedeki işlemleri onaylamak için imzalarını kullanırlar. Burada Alice, Ether'i aktarmasına izin veren basit bir akıllı sözleşme oluştursa da, ödeme başlatmak için bu sözleşmeden bir fonksiyon çağırmak yerine, Bob'un bunu yapmasını ve böylece işlem ücretini ödemesini sağlayabilir.
+
+Sözleşme aşağıdaki şekilde çalışacaktır:
+
+1. Alice, yapılacak ödemeleri karşılayacak kadar Ether'i ekleyerek, `ReceiverPays` sözleşmesini oluşturur.
+2. Alice, özel anahtarıyla bir mesaj imzalayarak sözleşmeye onay verir.
+3. Alice, kriptografik olarak imzalanmış mesajı Bob'a gönderir. Mesajın gizli tutulması gerekmez (daha sonra açıklanır) ve onu gönderme mekanizması veya yöntemi önemli değildir.
+4. Bob, imzalı mesajı akıllı sözleşmeye sunarak ödemelerini talep eder, iletinin gerçekliğini doğrular ve ardından ödemesini alır.
 
 
+#### İmza Oluşturma
 
+Alice'in işlemi imzalamak için Ethereum ağı ile etkileşime girmesi gerekmez, süreç tamamen çevrimdışı gerçekleşir. Bu dökümantasyonda vereceğimiz örnekte, [EIP-762'de](https://github.com/ethereum/EIPs/pull/712) açıklanan yöntemi kullanarak, bir dizi başka güvenlik avantajı sağladığı için, [web3.js](https://github.com/ethereum/web3.js) ve [MetaMask](https://metamask.io/) kullanarak tarayıcıdaki mesajları imzalayacağız.
+
+```
+/// Hashing first makes things easier var hash = web3.utils.sha3(“message to sign”); web3.eth.personal.sign(hash, web3.eth.defaultAccount, function () { console.log(“Signed”); });
+
+```
+### [Uyarı](#)
+
+> `Web3.eth.personal.sign` iletinin uzunluğunu imzalanan verilerin önüne ekler. İlk önce şifreleme yapılacağında, elde edilen mesaj her şekilde tam olarak 32 byte uzunluğunda olurken ve önek olarak eklenen uzunluk da her zaman aynı olacaktır.
+
+#### Ne İmzalanmalı?
+
+Ödeme komutları içeren bir sözleşme için imzalı mesaj şunları içermelidir:
+
++ Alıcının adresi
++ Aktarılacak miktar
++ Tekrarlama saldırılarına karşı koruma
+
+Bir tekrarlama saldırısı, imzalı bir mesajın ikinci bir işlem için yetki talebinde bulunmak üzere yeniden kullanılmasıdır. Tekrarlama saldırılarından kaçınmak için, Ethereum işlemleri için kullandığımız şeyin aynısını, nonce adı verilen ve hesap tarafından gönderilen işlem sayısını ifade eden bir sayıyı kullanıyoruz . Akıllı sözleşme, nonce sayısının birden çok kez kullanılıp kullanılmadığını kontrol ederek, bu saldırıların önüne geçer.
+
+Tekrarlama saldırısının gerçekleşmesinin bir başka yolu da, sözleşme sahibinin `RecieverPays` akıllı sözleşmesi başlatması ve ardından sözleşmeyi yoketmek istemesi durumudur. Sonrasında, `RecipientPays` sözleşmesini yeniden başlatmak istediklerinde, önceki nonce sayısını bilmeyen bu yeni sözleşme dışarıdan eski mesaj kullanılarak yapılacak saldırılara açık olacaktır.
+
+Alice, sözleşmenin adresini iletiye ekleyerek bu saldırıya karşı koruma sağlayabilir ve yalnızca sözleşmenin adresini içeren iletiler kabul edilirse bu saldırıdan korunabilir. Bunun bir örneğini, bu bölümün sonundaki detaylı sözleşmenin `claimPAyment ()` fonksiyonunun ilk iki satırında bulabilirsiniz.
+
+#### Paket Argümanları
+
+Şimdi imzalı mesaja hangi bilgileri dahil edeceğimizi belirlediğimize göre, mesajı bir araya getirmeye, iletmeye ve imzalamaya hazırız. Basit olması için, verileri birleştiriyoruz. [Ethereumjs-abi kütüphanesi](https://github.com/ethereumjs/ethereumjs-abi), Solidity’nin `abi.encodePacked` kullanarak kodlanan argümanlara uygulanan `keccak256` fonksiyonunun davranışını taklit eden `soliditySHA3` adlı bir fonksiyon sunar. İşte `ReceiverPays` örneği için uygun imzayı oluşturan bu JavaScript fonksiyonu:
+
+```
+// recipient is the address that should be paid.
+// amount, in wei, specifies how much ether should be sent.
+// nonce can be any unique number to prevent replay attacks
+// contractAddress is used to prevent cross-contract replay attacks
+function signPayment(recipient, amount, nonce, contractAddress, callback) {
+    var hash = "0x" + abi.soliditySHA3(
+        ["address", "uint256", "uint256", "address"],
+        [recipient, amount, nonce, contractAddress]
+    ).toString("hex");
+
+    web3.eth.personal.sign(hash, web3.eth.defaultAccount, callback);
+}
+```
+#### Solidity'de İmza Kurtarmak
+
+Genel olarak, ECDSA imzaları `r` ve `s` olmak üzere iki parametreden oluşur. Ethereum'daki imzalar, mesajı imzalamak için hangi hesabın özel anahtarının kullanıldığını ve işlemin göndereni olduğunu doğrulamak için kullanabileceğiniz, `v` adı verilen üçüncü bir parametre içerir. Solidity, `r`, `s` ve `v` parametreleriyle birlikte bir mesajı kabul eden ve mesajı imzalamak için kullanılan adresi döndüren yerleşik bir fonksiyon çıkarır.
+
+#### İmza Parametrelerini Çıkarma
+
+Web3.js tarafından üretilen imzalar, `r`, `s` ve `v`'nin birleştirilmesidir, bu nedenle ilk adım bu parametreleri birbirinden ayırmaktır. Bunu müşteri tarafında yapabilirsiniz, ancak akıllı sözleşmeye tarafında yapmak, üç yerine yalnızca bir imza parametresi göndermeniz gerektiği anlamına gelir. Bir bayt dizisini bileşen parçalarına bölmek karmaşık bir işlemdir. Bu yüzden işi `splitSignature` fonksiyonu(bu bölümün sonunda yapılan sözleşmedeki üçüncü fonksiyondaki gibi) ile yapmak için satır içi derleme kullanırız.
+
+#### Mesaj Hash'inin Hesaplanması
+
+Akıllı sözleşme tam olarak hangi parametrelerin imzalandığını bilmeli ve asıl mesajı kullanılan parametreler yardımıyla yeniden yaratarak sonucu imza doğrulaması için kullanmalıdır. `Prefixed` ve `recoverSigner` fonksiyonları, `claimPayment` fonksiyonunda bunu yapar.
+
+##### Detaylı Bir Sözleşme
+
+```
+pragma solidity >=0.4.24 <0.6.0;
+
+contract ReceiverPays {
+    address owner = msg.sender;
+
+    mapping(uint256 => bool) usedNonces;
+
+    constructor() public payable {}
+
+    function claimPayment(uint256 amount, uint256 nonce, bytes memory signature) public {
+        require(!usedNonces[nonce]);
+        usedNonces[nonce] = true;
+
+        // this recreates the message that was signed on the client
+        bytes32 message = prefixed(keccak256(abi.encodePacked(msg.sender, amount, nonce, this)));
+
+        require(recoverSigner(message, signature) == owner);
+
+        msg.sender.transfer(amount);
+    }
+
+    /// destroy the contract and reclaim the leftover funds.
+    function kill() public {
+        require(msg.sender == owner);
+        selfdestruct(msg.sender);
+    }
+
+    /// signature methods.
+    function splitSignature(bytes memory sig)
+        internal
+        pure
+        returns (uint8 v, bytes32 r, bytes32 s)
+    {
+        require(sig.length == 65);
+
+        assembly {
+            // first 32 bytes, after the length prefix.
+            r := mload(add(sig, 32))
+            // second 32 bytes.
+            s := mload(add(sig, 64))
+            // final byte (first byte of the next 32 bytes).
+            v := byte(0, mload(add(sig, 96)))
+        }
+
+        return (v, r, s);
+    }
+
+    function recoverSigner(bytes32 message, bytes memory sig)
+        internal
+        pure
+        returns (address)
+    {
+        (uint8 v, bytes32 r, bytes32 s) = splitSignature(sig);
+
+        return ecrecover(message, v, r, s);
+    }
+
+    /// builds a prefixed hash to mimic the behavior of eth_sign.
+    function prefixed(bytes32 hash) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
+    }
+}
+```
 

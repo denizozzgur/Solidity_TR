@@ -2102,21 +2102,80 @@ Bileşenler:
 + string:
     Dinamik olarak ölçülen UTF-8 kodlu dize, *Diziler* bölümüne. Değer tipi değildir!
     
-### Adres Değişkenleri
+### Adres Değişmezleri
 
-Adres sağlama toplamı testini geçen onaltı karakterli değişmezler, örneğin `0xdCad3a6d3569DF655070DEd06cb7A1b2Ccd1D3AF`, ödeme adresi türündedir. 39 ila 41 rakam uzunluğunda olan ve sağlama toplamı testini geçmeyen onaltı karakterli değişmezler bir uyarı verir ve normal rasyonel sayı değişmezleri olarak değerlendirilirler.
+Adres sağlama toplamı testini geçen onaltı karakterli değişmezler, örneğin `0xdCad3a6d3569DF655070DEd06cb7A1b2Ccd1D3AF`, `adress payable` türündedir. 39 ila 41 rakam uzunluğunda olan ve sağlama toplamı testini geçmeyen onaltı karakterli değişmezler bir uyarı verir ve normal rasyonel sayı değişmezleri olarak değerlendirilirler.
 
 #### [Uyarı]()
 
-> Karma harf adresi sağlama toplamı biçimi, EIP-55'te tanımlanmıştır.
+> Karma harf adresi sağlama toplamı biçimi, `EIP-55`'te tanımlanmıştır.
 
+### Rasyonel ve Tamsayı Değerleri
+
+Tamsayı değişmezleri 0-9 aralığında bir sayılar dizisinden oluşur. Ondalık olarak yorumlanırlar. Örneğin, `69` altmış dokuz anlamına gelir. Solidity dilinde sekizli değişmezler yoktur ve baştaki sıfırlar geçersizdir.
+
+Ondalık kesir değişmezleri a. ile oluşturulurlar ve bu ifadenin bir tarafında mutlaka bir sayı olması gerekir. Örnek olarak `1., .1 `ve` 1.3` bulunmaktadır.
+
+Üsün kesir içeremediği durumlarda, tabanın kesir içerebileceği bilimsel gösterimler de desteklenir. Örnekler arasında `2e10`, `-2e10`, `2e-10`, `2.5e1` bulunur.
+
+Okunabilirliğe yardımcı olmak ve sayısal bir harfin rakamlarını ayırmak için alt çizgiler kullanılabilir. Örneğin, `123_000` ondalık, onaltılık `0x2eff_abde` veya bilimsel ondalık gösterimi olan `1_2e345_678`'in tümü geçerlidir. Alt çizgilere yalnızca iki rakam arasında izin verilir ve arka arkaya yalnızca bir alt çizgiye izin verilir. Alt çizgi içeren bir sayı değişmezine ek bir anlam yüklemez, alt çizgiler yoksayılır.
+
+Değişmez sayı ifadeleri değişmez olmayan bir türe dönüştürülünceye kadar keyfi bir kesinliğe sahip olur (yani, değişmez bir ifade ile birlikte veya açık bir dönüştürme ile birlikte kullanılır). Bu durum, hesaplamaların taşmadığı ve bölmelerin sayı değişmez ifadelerinde kısaltılmadığı anlamına gelir.
+
+Örneğin, `(2 ** 800 + 1) - 2 ** 800` sabit `1` ile sonuçlanır (uint8 türünde), ancak ara sonuçlar belirlenen boyutuna bile uymaz. Dahası, `.5 * 8` tamsayıyla `4` sonuçlanır (tam sayı olmayanlar arasında kullanılmasına rağmen).
+
+Tamsayılara uygulanabilen herhangi bir işlem, işlenenler tamsayı olduğu sürece, sayı ifadelerinin tamamına da uygulanabilir. İkisinden herhangi birinin kesirli olması durumunda, bit işlemlerine izin verilmez ve üs, kesirli ise (üstelik rasyonel olmayan bir sayıyla sonuçlanabileceği için) üstele izin verilmez.
+    
+#### [Not]()
+
+> Her bir rasyonel sayı için Solidity dili bir sayı değişmez türüne sahiptir. Tamsayı değişmezleri ve rasyonel sayı değişmezleri sayı değişmez türlerine aittir. Ayrıca, tüm sayı değişmez ifadeleri (yani yalnızca sayı değişmezleri ve sayısal işlemleri içeren ifadeler) sayı değişmez türlerine aittir. Bu nedenle, `1 + 2` ve `2 + 1` sayı ifadelerinin her ikisi de rasyonel sayı 3 için aynı sayı hazır bilgi türüne aittir.
 
     
+#### [Uyarı]()
+
+> Tamsayı değişmezleri bölümü, `0.4.0` sürümünden önce Solidity'de işlemin sonucunu yuvarlamak için kullanılırdı, ancak şimdi rasyonel bir sonuç, örneğin `5/2`, `2`'ye eşit değil, `2.5`'e eşitlenebiliyor.
+
+#### [Not]()
+
+> Sayı değişmez ifadeleri başka türde değişmez ifadelerle birlikte kullanılır kullanılmaz değişebilir bir biçime dönüştürülür. Aşağıdaki örnekte `b`'ye verilen ifadenin değeri bir tamsayı olarak gözlenir. A, uint128 türünde olduğu için, `2.5 + a` ifadesinin uygun bir türü sonuç vermesi gerekir. `2.5 `ve` uint128` tipi için ortak bir tip olmadığından, Solidity derleyicisi bu kodu kabul etmemektedir.
     
 ```
+uint128 a = 1;
+uint128 b = 2.5 + a + 0.5;
 ```
+#### String değişmezleri ve Türleri
+
+String değişmezleri, çift veya tek tırnak ("foo" veya "bar") ile yazılır. C'deki gibi sıfıra giden sonuçları ima etmeyen bu ifadelerden "foo", dört değil, üç baytı temsil eder. Tamsayı değişmezlerinde olduğu gibi, türleri değişebilir, ancak örtük olarak `bytes1,… bytes32`'ye, sığarlarsa `bytes` ve `string` olarak dönüşürler.
+
+Örneğin, `bytes32 samevar = "stringliteral"` bir string değişmezi olan `bytes32` türüne atandığında ham bayt biçiminde yorumlanır.
+
+Dize değişmezleri aşağıdaki kaçış karakterlerini destekler:
+
++ \ <newline> (gerçek bir yeni satırdan kaçar)
++ \\ (ters eğik çizgi)
++ \' (tek alıntı)
++ \" (çift alıntı)
++ \b (geri al)
++ \f (form beslemesi)
++ \n (yeni satır)
++ \r (satır başı)
++ \t (sekme)
++ \v (dikey sekme)
++ \xNN    (altıgen kaçış, aşağıya bakınız)
++ \uNNNN   (unicode kaçış, aşağıya bakın)
+  
+`\xNN` onaltılık bir değer alır ve uygun baytı ekler. `\uNNNN` ise bir Unicode kod noktası alır ve bir UTF-8 dizisi ekler.
+
+Aşağıdaki örnekteki dize on bayt uzunluğundadır. Bir yeni satır byte ile başlar, bunu bir çift alıntı, tek bir alıntı bir ters eğik çizgi karakteri ve ardından (ayırıcı olmadan) `abcdef` karakter dizisi izler.
+
 ```
+"\n\"\'\\abc\
+def"
 ```
+Yeni bir satır olmayan herhangi bir unicode line terminator (yani LF, VF, FF, CR, NEL, LS, PS), değişmez dizgeyi sonlandırır. Yeni satır, yalnızca bir `\` tarafından gelmemişse, dizgiyi hazırlar.
+
+
+
 ```
 ```
 ```

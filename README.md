@@ -1667,10 +1667,187 @@ Bu, `modül2`'deki tüm içe aktarma işlemleri eski sürüme işaret ederken, `
 
 Geçerli bir dosyaya yol açan birden fazla remapping varsa, en uzun genel `prefix`i içeren remapping kabul edilir.
 
+**Remix:**
+
+[Remix](https://remix.ethereum.org/) GitHub için otomatik bir remapping sağlar ve dosyayı ağ üzerinden otomatik olarak alır. Yinelenebilir eşlemeyi yukarıdaki örnekteki gibi içe aktarabilirsiniz. Örneğin:
+
 ```
+::
+import “github.com/ethereum/dapp-bin/library/iterable_mapping.sol” as it_mapping;
+
 ```
+Remix gelecekte başka dosya içeri aktarma yöntemleri de sunabilir.
+
+### Yorumlar
+
+Tek satır yorumları (//) ve çoklu satır yorumları (/*...*/) mümkündür.
+
 ```
+// This is a single-line comment.
+
+/*
+This is a
+multi-line comment.
+*/
+
 ```
+### [Uyarı](#)
+
+> Tek satırlı bir yorum utf8 kodlamasında herhangi bir unicode satır sonlandırıcısı (LF, VF, FF, CR, NEL, LS veya PS) tarafından sonlandırılır. Sonlandırıcı, yorumdan sonra hala kaynak kodun bir parçasıdır, bu nedenle bir ascii sembolü değilse (bunlar NEL, LS ve PS), ayrıştırıcı hatasına yol açar.
+
+Ek olarak, [stil kılavuzunda](https://solidity.readthedocs.io/en/latest/style-guide.html#natspec) ayrıntılandırılan natspec yorumu adı verilen başka bir yorum türü de mevcuttur. Üçlü eğik çizgi (///) veya çift yıldız işareti (/ ** ... * /) ile yazılır ve doğrudan işlev bildirimlerinin veya ifadelerinin üzerinde kullanılır. İşlevleri belgelemek, resmi doğrulama için koşulları açıklamak ve bir işlevi çağırmaya çalıştıklarında kullanıcılara gösterilen bir **onay metni** sağlamak için bu yorumlar içindeki [Doxygen](https://en.wikipedia.org/wiki/Doxygen) stili etiketleri ile kullanılabilir.
+
+Aşağıdaki örnek sözleşmenin başlığını, iki işlev parametresinin ve iki dönüş değişkeninin açıklamasını içeriyor.
+
+```
+pragma solidity >=0.4.0 <0.6.0;
+
+/** @title Shape calculator. */
+contract ShapeCalculator {
+    /** @dev Calculates a rectangle's surface and perimeter.
+      * @param w Width of the rectangle.
+      * @param h Height of the rectangle.
+      * @return s The calculated surface.
+      * @return p The calculated perimeter.
+      */
+    function rectangle(uint w, uint h) public pure returns (uint s, uint p) {
+        s = w * h;
+        p = 2 * (w + h);
+    }
+}
+```
+## Sözleşmenin Yapısı
+
+Solidity'de yazılan sözleşmeler, nesne yönelimli dillerdeki sınıflara benzer. Her sözleşme, **durum değişkenleri, fonksiyonlar, fonksiyon düzenleyicileri, olaylar, yapı tipleri ve enum tipleri** bildirimlerini içerebilir. Ayrıca, sözleşmeler bu bileşenleri diğer sözleşmelerden de alabilir.
+
+**Kütüphaneler ve arayüzler** olarak adlandırılan özel tür sözleşmeler de bulunur.
+
+*Sözleşmeler* ile ilgili bölüm, hızlı bir genel bakış sunmaya yarayan bu bölümden daha fazla ayrıntı içermektedir.
+
+### Durum Değişkenleri
+
+Durum değişkenleri, değerleri kalıcı olarak sözleşme deposunda saklanan değişkenlerdir.
+
+```
+pragma solidity >=0.4.0 <0.6.0;
+
+contract SimpleStorage {
+    uint storedData; // State variable
+    // ...
+}
+```
+
+### Fonksiyonlar
+
+İşlevler, bir sözleşmedeki yürütülebilir kod birimleridir.
+
+```
+pragma solidity >=0.4.0 <0.6.0;
+
+contract SimpleAuction {
+    function bid() public payable { // Function
+        // ...
+    }
+}
+```
+Fonksiyonlar *dahili veya harici* olarak kullanılabilir. Bunun yanında diğer sözleşmelere karşı farklı görünürlük seviyelerine sahip olabilirler. Son olarak fonksiyonlar **parametreleri ve return değerlerini** kabul ederler.
+
+### Fonksiyon Düzenleyicileri
+
+Fonksiyon değiştiricileri, fonksiyonları semantiğini bildirimsel bir şekilde değiştirmek için kullanılırlar (sözleşmeler bölümündeki fonksiyon düzenleyicileri başlığını inceleyiniz). 
+```
+pragma solidity >=0.4.22 <0.6.0;
+
+contract Purchase {
+    address public seller;
+
+    modifier onlySeller() { // Modifier
+        require(
+            msg.sender == seller,
+            "Only seller can call this."
+        );
+        _;
+    }
+
+    function abort() public view onlySeller { // Modifier usage
+        // ...
+    }
+}
+```
+
+### Olaylar
+
+*Olaylar*, EVM kayıt sistemleri için kolaylık sağlayan arayüzlerdir.
+
+```
+pragma solidity >=0.4.21 <0.6.0;
+
+contract SimpleAuction {
+    event HighestBidIncreased(address bidder, uint amount); // Event
+
+    function bid() public payable {
+        // ...
+        emit HighestBidIncreased(msg.sender, msg.value); // Triggering event
+    }
+}
+```
+Olayların nasıl bildirildiği ve bir dapp içinde nasıl kullanılabileceği hakkında detaylı bilgi için "Sözleşmelerdeki Olaylar" bölümüne bakın.
+
+### Yapı Tipleri
+
+*Yapılar*, çeşitli değişkenleri gruplayabilen özel tanımlanmış türlerdir (bkz. *Yapılar* bölümü).
+
+```
+pragma solidity >=0.4.0 <0.6.0;
+
+contract Ballot {
+    struct Voter { // Struct
+        uint weight;
+        bool voted;
+        address delegate;
+        uint vote;
+    }
+}
+
+```
+### Enum Türleri
+
+*Enumlar*, sonlu bir "sabit değer" kümesine sahip özel türler oluşturmak için kullanılabilir.
+
+```
+pragma solidity >=0.4.0 <0.6.0;
+
+contract Purchase {
+    enum State { Created, Locked, Inactive } // Enum
+}
+
+```
+## Sözleşme Türleri
+
+Solidity, statik olarak yazılmış bir dildir; bu, her değişkenin (global ve yerel) türünün belirtilmesi gerektiği anlamına gelir. Solidity, karmaşık tipler oluşturmak için birleştirilebilecek birkaç temel sözleşme tipi sağlar.
+
+Ek olarak, türler operatör içeren ifadelerde birbirleriyle etkileşime girebilir. Çeşitli operatörlerin hızlı bir referansı için, bkz. [Operatör Öncelik Sırası](#).
+
+“Undefined” veya “null” değerleri kavramı, Solidity dilinde yoktur, bunun yerine yeni bildirilen değişkenler her zaman türüne bağlı olarak [varsayılan](#) bir değere sahiptir. Beklenmeyen değerleri işlemek için, tüm işlemi geri döndürecek `revert` fonksiyonunu kullanmalı veya başarıyı gösteren ikinci bir *bool* değeri olan bir *tuple* döndürmelisiniz.
+
+### Değer Türleri
+
+Aşağıdaki türlere değer türleri de denir, çünkü bu türlerin değişkenleri her zaman değere göre belirlenir, yani fonksiyon argümanları olarak veya atamalarda kullanıldığında her zaman eşitlendikleri değerin kopyalandığı gözlenir.
+
+#### Boolean
+
+`bool`: `True` veya `False` sabit değerini alır.
+
+Operatörler:
+
++ ! (mantıksal olumsuzlama)
++ && (mantıksal bağlantı, “ve”)
++ || (mantıksal bağlantı kesilmesi, “veya”)
++ == (eşitlik)
++ ! = (eşitsizlik)
+
+
+
 ```
 ```
 ```
@@ -1689,8 +1866,8 @@ Geçerli bir dosyaya yol açan birden fazla remapping varsa, en uzun genel `pref
 
 
  - 
-  - Sözleşmenin Yapısı
-  - Sözleşme Türleri
+  - 
+  - 
   - Birimler ve Global Olarak Mevcut Değişkenler
   - İfadeler ve Kontrol Yapıları
   - Sözleşmeler

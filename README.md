@@ -1934,6 +1934,185 @@ Sabit nokta numaraları henüz Solidity tarafından tam olarak desteklenmiyor. B
 
 > Floating nokta (birçok dilde float ve double, veya IEEE 754 sayıları) ve sabit nokta sayıları arasındaki temel fark, tamsayı ve kesirli kısım için kullanılan bit sayısının (ondalık noktadan sonraki kısım) ilkinde esnek, ikincisinde ise kesin tanımlı olmasıdır. Genel olarak, floating noktalarındaki hemen hemen tüm alan sayıyı temsil etmek için kullanılırken, yalnızca .ok küçük bir bit sayısı ondalık noktasının nerede olduğunu tanımlar.
 
+#### Adres
+
+Adres türü, büyük ölçüde özdeş olan iki farklı şekilde karşımıza çıkar:
+
++ Address: 20 baytlık bir değer (bir Ethereum adresinin boyutu) tutar.
++ Ödeme Adresi: Adresle aynı, ancak ek üyelerle transfer veya gönderme amacıyla kullanılır.
+
+Bu ayrımın ardındaki fikir, `ödeme adresi` Ether gönderebileceğiniz bir adres olduğu halde düz bir `adres` Ether gönderilemez.
+
+Tür Dönüşümleri:
+
+Ödeme adresinden normal adrese örtülü dönüşümlere izin verilirken, normal adresten ödeme adresine yapılan işlemlerde dönüşüm mümkün değildir (böyle bir dönüşümü gerçekleştirmenin tek yolu `uint160`'a kadar aracı dönüştürücü kullanmaktır).
+
+Herhangi bir adres, dolaylı olarak ödeme adresine dönüştürülebilir.
+
+Değişken ve sabit tamsayı değerleri, bayt20 ve sözleşme türleri için normal adreslerden (veya normal adreslere) dönüşümlere izin verilirken: Ödenecek form adresinin dönüşümlerine izin verilmez. Bunun yerine, form adresinin (x) dönüşümünün sonucu bir ödeme adresiyken, eğer x tam sayı veya sabit bayt tipinde ise değişmez bir sözleşme adresine dönüşür. Eğer x, geri dönüş fonksiyonu olmayan bir sözleşme ise, adres (x) adres tipi olacaktır. Harici fonksiyonlarda imzalar adres ve ödeme adresi türü için kullanılır.
+
+#### [Not]()
+
+> Ödeme adresi ile normal adres arasındaki farkı çok fazla umursamadan ve sadece her yerde adres kullanmanız sizin için daha iyi bir seçenek olabilir. Örneğin, para çekme düzenini kullanıyorsanız, adresin kendisini adres olarak saklayabilirsiniz (çünkü aktarma işlevini msg.sender'da çağırırsınız ve bu aynı zamanda ödeme adresidir).
+
+**Operators:**
+
+`<=`, `<`, `==`, `!=`, `>=` ve `>`.
+
+#### [Uyarı]()
+
+>Daha büyük bir bayt boyutu kullanan bir türü bir adrese, örneğin bytes32'ye dönüştürürseniz, işlem yarıda kesilir. Dönüşüm belirsizliğini `0.4.24` sürümünden ve derleyici kuvvetinden daha yükseğe çıkarmak için, kısaltmayı dönüşümde açık yapabilirsiniz. Örneğin, `0x111122223333444455556666777788889999AAAABBBBCCCCDDDDEEEEFFFFCCCC` adresini ele alalım.
+
+>`0x111122223333444455556666777788889999aAa` ile sonuçlanan `address(uint160 (bytes20 (b)))` kullanabilirsiniz ya da `0x777788889999AaAAbBbbCcccddDdeeeEfFFfCcCc` ile sonuçlanacak `address(uint160(uint256(b)))` i tercih edebilirsiniz.
+
+#### [Not]()
+
+> `Adres` ile `ödeme adresi`, arasındaki fark, 0.5.0 sürümü ile tanıtıldı. Ayrıca bu versiyondan başlayarak, sözleşmeler adres türünden gelmez, ancak ödenebilir bir geri dönüş işlevi varsa, açıkça adrese veya ödeme adresine dönüştürülebilir.
+
+#### Adresin Organları
+
+> Adresin tüm üyelerine dair hızlı bir bilgilendirme için, bkz. Adres Türlerinin Üyeleri.
+
++ `balance` ve `transfer`
+
+`Balance` özelliğini kullanarak bir adresin bakiyesini sorgulamak ve `transfer` işlevini kullanarak ödenebilir bir adrese  Ether (wei birimlerinde) göndermek mümkündür:
+
+```
+address payable x = address(0x123);
+address myAddress = address(this);
+if (x.balance < 10 && myAddress.balance >= 10) x.transfer(10);
+
+```
+Cari sözleşmenin bakiyesi yeterince büyük değilse veya Eter transferi alıcı hesap tarafından reddedilirse transfer işlevi başarısız olur. Aktarma işlemi hata olarak geri döndürülür.
+
+#### [Not]()
+
+> Eğer x bir sözleşme adresiyse, kodu transfer çağrısı ile birlikte yürütülür (bu, EVM'nin bir özelliğidir ve önlenemez). Bu uygulamanın gazının tükenmesi veya herhangi bir şekilde başarısız olması durumunda, Ether devri geri alınacak ve mevcut sözleşme bir istisna ile sona erecektir.
+
++ `send`
+
+`send`, düşük seviyede `transfer`le aynı işleve sahiptir. Yürütme başarısız olursa, mevcut sözleşme bir istisna sebebiyle durmayacak, ancak gönderme `false` döndürecektir.
+
+#### [Uyarı]()
+
+Gönderme kullanımında bazı tehlikeler mevcuttur: Çağrı yığını derinliği 1024'te ise (ki bu her zaman arayanlar tarafından zorunlu tutulabilir) aktarım başarısız olabilir veya alıcı gazın bitmesi durumuyla karşılaşılabilir. Bu nedenle, güvenli Ether transferlerini yapmak için, her zaman `send` döngü değerini kontrol edin, `transfer` kullanın veya daha iyisi: alıcının para çekme isteği göndereceği bir yöntem kullanın.
+
++ `call`, `delegatecall` ve `staticcall`
+
+ABI'ye uymayan sözleşmelerle arayüz oluşturmak veya kodlama üzerinde daha doğrudan kontrol sahibi olmak için, `call`, `delegatecall` ve `staticcall` fonksiyonları sağlanır. Hepsi tek baytlık bir bellek parametresi alır ve başarı koşulunu (`bool` olarak) ve döndürülen verileri (byte belleği) döndürür. `Abi.encode`, `abi.encodePacked`, `abi.encodeWithSelector` ve `abi.encodeWithSignature` fonksiyonları yapılandırılmış verileri kodlamak için kullanılabilir.
+
+**Örnek:**
+
+```
+bytes memory payload = abi.encodeWithSignature("register(string)", "MyName");
+(bool success, bytes memory returnData) = address(nameReg).call(payload);
+require(success);
+
+```
+#### [Uyarı]()
+
+> Bütün bu fonksiyonlar düşük seviyeli fonksiyonlardır ve dikkatli kullanılmalıdır. Özellikle, bilinmeyen herhangi bir sözleşme kötü amaçlı olabilir ve eğer kullanırsanız, sözleşmenizi geri döndürebilecek bir sonuca sebebiyet verebilirsiniz. Bu nedenle işleminiz geri döndüğünde durum değişkenlerinizdeki değişikliklere hazırlıklı olursunuz. Diğer sözleşmelerle etkileşimin en iyi yolu, sözleşmede bulunan bir nesne(x.f ()) üzerinde bir fonksiyon çağırmaktır.
+
+#### [Not]()
+
+> Daha önceki Solidity sürümleri bu fonksiyonların keyfi argümanlar almasına izin veriyordu ve ayrıca bytes4 türünün ilk argümanını farklı şekilde ele alacaktı. Bu tartışmalı kullanımlar 0.5.0 versiyonunda kaldırılmıştır.
+
+Verilen gazı `.gas ()` değiştiricisi ile ayarlamak mümkündür:
+
+```
+address(nameReg).call.gas(1000000)(abi.encodeWithSignature("register(string)", "MyName"));
+
+```
+Benzer şekilde, verilen Ether değeri de kontrol edilebilir:
+
+```
+address(nameReg).call.value(1 ether)(abi.encodeWithSignature("register(string)", "MyName"));
+
+```
+Son olarak, bu değiştiriciler birleştirilebilir. Onların sırası önemli değildir:
+
+```
+address(nameReg).call.gas(1000000).value(1 ether)(abi.encodeWithSignature("register(string)", "MyName"));
+
+```
+Benzer şekilde, `delegatecall` işlevi kullanılabilir: fark, verilen adresin yalnızca kodunun kullanılması, diğer tüm hususların (depolama, denge,…) mevcut sözleşmeden alınmasıdır. `Delegatecall`’in amacı başka bir sözleşmede saklanan kütüphane kodunu kullanmaktır. Kullanıcı, her iki sözleşmedeki depolama düzeninin kullanılacak `delegatecall` için uygun olmasını sağlamalıdır.
+
+#### [Not]()
+
+> Geçmişte, yalnızca orijinal `msg.sender` ve `msg.value` değerlerine erişim sağlamayan `callcode` denilen sınırlı bir varyant mevcuttu. Bu fonksiyon 0.5.0 sürümünde kaldırılmıştır.
+
+Byzantium'den bu yana `staticcall` da kullanılabilir. Bu temelde `call` ile aynıdır, fakat çağrılan fonksiyon durumu herhangi bir şekilde değiştirirse işlemi geri dönecektir.
+
+`call`, `delegatecall` ve `staticcall` fonksiyonlarının üçü de çok düşük seviyeli fonksiyonlardır ve sadece Solidity sözleşmelerinde güvenliğini kırdıkları için son çare olarak kullanılmalıdırlar.
+
+`.Gas ()` seçeneği, üç yöntemin hepsinde bulunurken, `.value ()` seçeneği `delegatecall` için desteklenmez.
+
+#### [Not]()
+
+> Tüm sözleşmeler `adress` türüne dönüştürülebilir, bu nedenle `adress(this).balance` kullanarak mevcut sözleşmenin bakiyesini sorgulamak mümkündür.
+
+### Sözleşme Türleri
+
+Her sözleşme kendi türünü tanımlar. Sözleşmeleri dolaylı olarak devralındıkları sözleşmelere dönüştürebilirsiniz. Sözleşmeler açıkça diğer tüm sözleşme türlerine ve adres türüne dönüştürülebilir.
+
+`adress payable` ve adresinden açıkça dönüşme ancak sözleşmeli türün geri ödenebilir bir geri dönüş işlevi varsa mümkündür. Dönüşüm hala `adress(x)` kullanılarak yapılır ancak ödeme adresi `(x)` kullanılarak yapılamaz. 
+
+#### [Not]()
+
+> 0.5.0 sürümünden önce, doğrudan adres türünden türetilen sözleşmeler de yapılabiliyordu ve ödeme adresi ile adres arasında bir fark yoktu.
+
+Yerel bir sözleşme tipi değişkeni *(MyContract c)* bildirirseniz, bu sözleşmedeki fonksiyonları çağırabilirsiniz. Aynı sözleşme türüne sahip bir yerden fonksiyon çağırmaya özen gösterin.
+
+Ayrıca sözleşmeleri de başlatabilirsiniz (yani, yeni yaratabilirsiniz). Daha fazla ayrıntıyı "Yeni sözleşmeler" bölümünde bulabilirsiniz.
+
+Bir sözleşmenin veri temsili, `adress` tipiyle aynıdır ve bu tip **ABI**'da da kullanılır.
+
+Sözleşmeler hiçbir operatörü desteklemez.
+
+Sözleşme türlerinin bileşenleri, durum değişkenleri de dahil olmak üzere sözleşmenin dış fonksiyonları kabul edilir.
+
+Bir sözleşme `C` için, sözleşme hakkında tip bilgisine erişmek için `type(C)` kullanabilirsiniz.
+
+#### Sabit Boyutlu Bayt Dizileri
+
+Bayt1, bayt2, bayt3,…, bayt32 değer türleri bir ila 32 arasında bir bayt dizisini tutar. Bayt, bayt1 için bir diğer addır.
+
+Operatörler:
+
++ Karşılaştırmalar: `<=`, `<`, `==`,`! =`,`> =`,`>` (Bool olarak değerlendir)
++ Bit operatörleri: `&`, `|`,` ^` (bitsel özel ya da), `~` (bitsel olumsuzlama)
++ Vardiya operatörleri: `<<` (sola kaydırma), `>>` (sağa kaydırma)
++ Dizin erişimi: `x`, `bytesI` türünde ise, `0 <= k < I` için x[k], k bayt değerini döndürür (salt okunur).
+
+Vardiya operatörü, herhangi bir tamsayı tipinde sağ işlenen (ancak sol işlenenin türünü döndürür) ile çalışır. Bu, kaydırılacak bit sayısını gösterir. Negatif bir miktarda kaydırmak, bir zaman aşımı istisnasına neden olur.
+
+Bileşenler:
+
+`.length`, bayt dizisinin sabit uzunluğunu verir (salt okunur).
+
+#### [Not]()
+
+> `Byte[]` türü bir bayt dizisidir, ancak dolgu kuralları nedeniyle her öğe için 31 baytlık alanı boşa harcar (depolama alanı hariç). Bunun yerine `bytes` türünü kullanmak daha iyidir.
+
+
+### Dinamik Boyutlu Bayt Dizisi
+
++ bytes:
+    Dinamik boyutlu bayt dizisi, *Diziler* bölümüne bakınız. Değer tipi değildir!
++ string:
+    Dinamik olarak ölçülen UTF-8 kodlu dize, *Diziler* bölümüne. Değer tipi değildir!
+    
+### Adres Değişkenleri
+
+Adres sağlama toplamı testini geçen onaltı karakterli değişmezler, örneğin `0xdCad3a6d3569DF655070DEd06cb7A1b2Ccd1D3AF`, ödeme adresi türündedir. 39 ila 41 rakam uzunluğunda olan ve sağlama toplamı testini geçmeyen onaltı karakterli değişmezler bir uyarı verir ve normal rasyonel sayı değişmezleri olarak değerlendirilirler.
+
+#### [Uyarı]()
+
+> Karma harf adresi sağlama toplamı biçimi, EIP-55'te tanımlanmıştır.
+
+
+    
+    
 ```
 ```
 ```
@@ -1945,6 +2124,24 @@ Sabit nokta numaraları henüz Solidity tarafından tam olarak desteklenmiyor. B
 ```
 ```
 ```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+
+
 
 
 

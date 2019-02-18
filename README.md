@@ -62,7 +62,7 @@ Topluluktan bazı gönüllüler bu belgeyi farklı dillere çevirmekte bizlere y
   - Güvenli Uzaktan Satın Alım
   - Mikro Ödeme Kanalı
 + Derinlemesine Solidty
-  - Bir Solidity Kaynak Dosyasının Düzeni
+  - Bir Solidity Kaynak Dosyasının Yapısı
   - Sözleşmenin Yapısı
   - Sözleşme Türleri
   - Birimler ve Global Olarak Mevcut Değişkenler
@@ -1531,11 +1531,169 @@ function isValidSignature(contractAddress, amount, signature, expectedSigner) {
     return signer.toLowerCase() ==
         ethereumjs.Util.stripHexPrefix(expectedSigner).toLowerCase();
 }
+```
+
+# Derinlemesine Solidity
+
+## Bir Solidity Kaynak Dosyasının Yapısı
+
+Kaynak dosyaları, isteğe bağlı sayıda *sözleşme tanımı, import ve pragma yönergeleri* içerebilir.
+
+## Pragmalar
+
+`Pragma` anahtar sözcüğü, belirli derleyici özelliklerini veya denetimlerini etkinleştirmek için kullanılır. Bir pragma yönergesi bir kaynak dosyasında her zaman yereldir, bu nedenle tüm projenizde etkinleştirmek istiyorsanız pragmayı tüm dosyalarınıza eklemeniz gerekir. Başka bir dosya alırsanız, o dosyadan gelen pragma içe aktarılan dosyaya otomatik olarak uygulanmaz.
+
+### Pragma Sürümü
+
+Kaynak dosyaları, uyumsuz değişiklikler getirebilecek veya dosyanın çalışmasını engelleyebilecek yeni derleyici sürümleriyle karşılaştıklarında bozulmamaları için yazıldıkları pragma sürümünün kodun başında açıklanması gerekir. Bu sayede yeni pragma versiyonları ile gelecek değişiklikleri mutlak bir asgari seviyede tutmaya çalışıyoruz ve semantic değişikliklerini sözdiziminde de değişiklik yaparak düzenlemeye çalışıyoruz, ancak bu elbette her zaman mümkün değildir. Özellikle  `0.x.0` veya `x.0.0` şeklinde görünen ve büyük değişiklikler içeren sürümler için değişiklik listesini incelemenin gerekli olduğunu hatırlatalım.
+
+Pragma sürümü aşağıdaki gibi görünür:
+
+```
+pragma solidity ^0.5.2;
 
 ```
 
+Yukarıdaki kodu içeren kaynak dosya, 0.5.2 sürümünden önceki bir derleyici ile derlenmeyecek ve ayrıca 0.6.0 sürümünden başlayan bir derleyici üzerinde çalışmayacaktır (bu ikinci koşul ^ kullanılarak eklenir). Bunun arkasındaki fikir, 0.6.0 sürümüne kadar herhangi bir kırılma değişikliği yaşanmayacağından, kodumuzun istediğimiz şekilde derleyeceğinden her zaman emin olabileceğimizdir. Çıkan hata düzeltme sürümleri ise kaynak kodumuzda sorunsuz çalışacaktır.
+
+Derleyici sürümü için çok daha karmaşık kurallar belirtmek mümkündür. Bu durumlarda kodumuzu, npm tarafından kullanılan ifadeler takip eder.
+
+### [Uyarı](#)
+
+> Pragma sürümünü kullanmak, derleyicinin sürümünü değiştirmeyecektir. Ayrıca derleyicinin özelliklerini de etkinleştirmez veya devre dışı bırakmaz. Sadece derleyiciye, sürümünün pragmanın gerektirdiği ile uyuşup uyuşmadığını kontrol etmesi talimatını verecektir. Eşleşmezse, derleyici bir hata verecektir.
+
+### Deneysel Pragmalar
+
+Bir diğer pragma türü deneysel pragma olarak bilinir. Derleyici veya dilin henüz varsayılan olarak etkin olmayan özelliklerini denemek için kullanılabilir. Aşağıdaki örnek deneysel pragmalar şu anda desteklenmektedir:
+
+#### ABIEncoderV2
+
+Yeni ABI kodlayıcı, rasgele iç içe dizileri ve yapıları kodlama ve kodunu çözme özelliklerini içerir. Daha az optimal kod üretir (kodun bu kısmı için optimize edici hala geliştirilme aşamasındadır) ve eski kodlayıcı kadar test edilmemiştir. Bu deneysel versiyonu `pragma experimental ABIEncoderV2` komutu ile kullanabilirsiniz.
+
+#### SMTChecker
+
+Bu bileşen, Solidity derleyicisi kurulurken etkin olmalıdır ve bu nedenle tüm Solidity ikili dosyalarında mevcut değildir. *Yapı talimatları* başlığında, bu seçeneğin nasıl etkinleştirileceğini açıklayacağız. Çoğu sürümde Ubuntu PPA sürümleri için etkinleştirilmesi gerekse bile; solc-j'ler, Docker görüntüleri, Windows ikili dosyaları veya statik olarak oluşturulmuş Linux ikili dosyaları için etkinleştirmeye gerek kalmaz.
+
+Eğer `pragma experimental SMTChecker;` kodunu dosyanıza eklerseniz, o zaman muhtemel bir SMT çözücünün varlığından kuşkulanan ek güvenlik uyarıları alırsınız. Bileşen henüz Solidity dilinin tüm özelliklerini desteklemediğinden ve birçok uyarı verebilir. Desteklenmeyen özellikleri rapor etmesi durumunda, belirtilen sebepler henüz tatmin edici olmayabilir.
+
+## Diğer Kaynak Dosyaları İçe Aktarma
+
+### Syntax & Semantic
+
+Solidity, varsayılan `export` ifadesini tam olarak bilmese de, JavaScript’te (ES6’dan itibaren) bulunana benzer `import` ifadesini destekler.
+
+Global düzeyde, aşağıdaki koddakine benzer `import` ifadesini projelerinizde kullanabilirsiniz:
+
+```
+import "filename";
+
+```
+
+Bu ifade, tüm global sembolleri “filename” belgesinden (ve orada içe aktarılan semboller) mevcut global kapsamın içine (ES6’dan farklı, ancak Solidity için geriye dönük olarak uyumlu) çalışmakta olduğumuz dosyanın içe aktarır. Yine de yukarıdaki kullanım pratikte çok önerilmez, çünkü ad alanını tahmin edilemez bir şekilde kirletir: “filename” belgesi içine yeni üst düzey öğeler eklerseniz bu değişiklik, “filename” dosyasından yukarıdaki şekilde içe aktarılan tüm dosyalara otomatik olarak yansıtılır. İçe aktarım sırasında kullanılan açıklamada daha spesifik ifadeler kullanmanız tavsiye edilir.
+
+Aşağıdaki örnekte "filename" belgesindeki tüm global sembolleri içeren "symbolName" isimli yeni bir global sembol oluşturulmuştur.
+
+```
+import * as symbolName from "filename";
+
+```
+Bir ad çakışması varsa, içe aktarırken sembolleri de yeniden adlandırabilirsiniz. Bu kod, "filename" belgesi içindeki "symbol1" ve "symbol2" isimli iki global sembole kendi dosyamız içinde sırasıyla "alias" ve "symbol2" isimli iki yeni global sembol tanımlar.
+
+```
+import {symbol1 as alias, symbol2} from "filename";
+
+```
+ES6'nın bir parçası olmayan ama yine de yeterli olabilecek bir başka kullanım;
+
+```
+import "filename" as symbolName;
+
+```
+
+Yukarıdaki kod `import * as symbolName from "filename";` 'e eşdeğerdir.
+
+### [Not](#)
+
+> Eğer `moduleName` olarak “filename.sol” belgesini import ederseniz; “filename.sol” isimli belgede bulunann `C` isimli sözleşmeye `modeleName.C` yazarak erişebilirsiniz. Doğrudan `C` yazmanız durumunda erişim mümkün olmaz.
+
+### Dosya Konumu
+
+Diğer kodlama dillerindeki gibi, içe aktarılmak istenen dosya adı her zaman dizin ayırıcı olan `/` ile hedefe yönlendirilerek elde edilir. Geçerli olan dosya konumu `.` ile belirtilirken `..` ana dizin dosyasını işaret eder. `.` veya `..`kendisinden sonra `/` dışında bir karakter tarafından takip ediliyorsa, geçerli dosya komutu veya ana dizin kastedilmiyor demektir. `.` veya `..` ile başlamadıkça tüm dosya komutları geçerli olan dizin referans kabul edilerek direk yönlendirme olarak kabul edilir.
+
+Geçerli dosyayla aynı dizinden almak bir x dosyası almak için, `import ./x as x` ifadesini kullanın. Eğer `import "x" as x` ifadesini kullanırsanız farklı bir dosyaya başvurulabilir (genel bir "`include` dizininde").
+
+Derleyicinizin (aşağıya bakınız) dosya komutlarını gerçekte nasıl çözdüğüne bağlı olarak bazı değişiklikler gözlemlenebilir. Genel olarak, dizin hiyerarşisinin yerel dosya sisteminiz üzerinde kesin olarak konumlandırılması gerekmez; ipfs, http veya git üzerinde de konumlandırılmış olabilir.
+
+### [Uyarı](#)
+
+> Her zaman `import "./filename.sol";` gibi göreceli komutları kullanmayı tercih edin ve `..` gibi konum belirticilerinde kullanmaktan kaçının. İkinci yöntemi kullanmanız durumunda, global konum belirteçlerini kullanmak ve aşağıda açıklandığı gibi yeniden konumlandırma ayarları yapmak muhtemelen daha iyi sonuç verecektir.
+
+### Gerçek Derleyici Kullanımı 
+
+Derleyiciyinizi, bir dosya konumunun nasıl ifade edilmesi gerektiği konusunda dilediğiniz gibi ayarlayabilirsiniz. Örneğin, `github.com/ethereum/dapp-bin/library` sanal dizininden içe aktarılan her şeyin aslında yerel dizininiz olan `/ usr / local / dapp-bin / library` üzerinden okunması için bir derleyicinizde yeniden düzenleme yapabilirsiniz. Birden fazla remapping uygulanırsa, önce en uzun anahtara sahip olan denenir. Boş bir ön eke izin verilmez. Kullandığınız ortam, aynı adı taşıyan bir kütüphanenin farklı sürümlerini içe aktarmak için paketleri yapılandırmanıza izin veren bir fonksiyona sahip olabilir.
+
+**solc:**
+
+Solc(komut satırı derleyicisi) için, `context:prefix=target arguments;` komutu kullanılarak hem `context` hem de `=target` dosyasının isteğe bağlı çağrıldığı bir remapping sağlanabilir.  Bu durumda, normal dosya halindeki tüm remapping değerleri yeniden derlenir (bağımlılıkları dahil).
+
+Bu mekanizma geriye doğru da uyumludur (hiçbir dosya adı `=` veya `:` bulundurmadığı sürece) ve hiç bir temel değişikliğe sebep olmaz. Kapsam dahilindeki dosyalar ve `context` altındakiler, `prefix` ile başlayan bir dosya içe aktarıldığında bu `prefix`i `target` ile değiştirirler.
+
+Örneğin, `github.com/ethereum/dapp-bin/` dosyasını yerel olarak `/ usr / local / dapp-bin` dizinine klonlarsanız, kaynak dosyanızda aşağıdakileri kullanabilirsiniz:
+
+```
+import "github.com/ethereum/dapp-bin/library/iterable_mapping.sol" as it_mapping;
+
+```
+Burada düzenleyicinizi tekrar çalıştırsınız:
+
+```
+solc github.com/ethereum/dapp-bin/=/usr/local/dapp-bin/ source.sol
+```
+
+Daha karmaşık bir örnek olarak, eski bir dapp-bin sürümünü kullanan bir modüle dayanan `/ usr / local / dapp-bin_old` dosyasını kullandığınızı varsayalım.
+
+```
+solc module1:github.com/ethereum/dapp-bin/=/usr/local/dapp-bin/ \
+     module2:github.com/ethereum/dapp-bin/=/usr/local/dapp-bin_old/ \
+     source.sol
+     
+```
+Bu, `modül2`'deki tüm içe aktarma işlemleri eski sürüme işaret ederken, `modül1`'deki içe aktarmanın yeni bir sürüme işaret ettiği anlamına gelir.
+
+
+### [Not](#)
+
+> `Solc`, yalnızca belirli dizinlerden dosya eklemenize izin verir. Bu dosyaların açıkça belirtilen kaynak dosyalardan birinin dizininde (veya alt dizininde) veya yeniden yapılanma hedefinin dizininde (veya alt dizininde) bulunmaları gerekir. Doğrudan mutlak içeriğe izin vermek istiyorsanız, `/ = /` işaretini eklemelisiniz.
+
+Geçerli bir dosyaya yol açan birden fazla remapping varsa, en uzun genel `prefix`i içeren remapping kabul edilir.
+
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
 ```
 ```
 ```
 ```
 
+
+
+
+ - 
+  - Sözleşmenin Yapısı
+  - Sözleşme Türleri
+  - Birimler ve Global Olarak Mevcut Değişkenler
+  - İfadeler ve Kontrol Yapıları
+  - Sözleşmeler
+  - Solidity Assembly
+  - Çeşitli
+  - Solidity v0.5.0 Değişiklikleri

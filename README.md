@@ -1838,18 +1838,102 @@ Aşağıdaki türlere değer türleri de denir, çünkü bu türlerin değişken
 
 `bool`: `True` veya `False` sabit değerini alır.
 
-Operatörler:
+**Operatörler:**
 
-+ ! (mantıksal olumsuzlama)
-+ && (mantıksal bağlantı, “ve”)
-+ || (mantıksal bağlantı kesilmesi, “veya”)
-+ == (eşitlik)
-+ ! = (eşitsizlik)
++ `!` (mantıksal olumsuzlama)
++ `&&` (mantıksal bağlantı, “ve”)
++ `||` (mantıksal bağlantı kesilmesi, “veya”)
++ `==` (eşitlik)
++ `! =` (eşitsizlik)
+
+`||` ve `& &` operatörleri ortak kısa devre kurallarını uygular. Bunun anlamı `f (x) || g (y)` işleminde, `f (x)` doğru olarak değerlendirilirse, yan etkileri olsa bile `g (y)` değerlendirilmez.
+
+#### Tam Sayılar
+
+`int / uint`: Çeşitli boyutlarda işaretli ve işaretsiz tam sayıları tanımalamak için kullanılır. `uint` ve `int`, sırasıyla `uint256` ve `int256`'nın yerine de kullanılabilir.
+
+**Operatörler:**
+
++ Karşılaştırmalar: <=, <, ==,! =,> =,> (Bool olarak değerlendir)
++ Bit operatörleri: &, |, ^ (bitsel özel ya da), ~ (bitsel olumsuzlama)
++ Vardiya operatörleri: << (sola kaydırma), >> (sağa kaydırma)
++ Aritmetik operatörler: +, -, unary -, *, /,% (modulo), ** (üstelleştirme)
+
+#### [Uyarı]()
+
+> Solidity'de kullanılan tam sayılar belirli bir aralıkla sınırlandırılmıştır. Örneğin, `uint32` ile bu, `0`dan `2 ** 32 - 1` e kadardır. Bu sayılardaki bazı işlemlerin sonucu bu aralığa uymuyorsa, işlem yarıda kesilir. Bu kısaltmalar, farkında olmanız ve sonuçlarına karşı önlem almanız gereken ciddi sorunlara sebep olabilir.
 
 
+#### Karşılaştırmalar
+
+Bir karşılaştırmanın değeri, tamsayı değerini karşılaştırarak elde edilen değerdir.
+
+#### Bir İşlemleri
+
+Bit işlemleri, bir sayının iki farklı tamamlayıcı temsili değeri üzerinde yapılan işlemlerdir. Örneğin `~int256(0) == int256(-1)`.
+
+#### Vardiya Operatörleri
+
+Bir vardiya işleminin sonucu, sol işlenenin türüne sahiptir. `X << y` ifadesi, `x * 2 ** y`'ye eşittir ve pozitif tamsayılar için, `x >> y`, `x / 2 ** y`'ye eşittir. Negatif bir `x` için, `x >> y`, değeri yuvarlama sırasında (negatif sonsuzluğa doğru) bu değeri karesiyle bölmeye eşdeğerdir. Negatif miktarda vardiya işlemi uygulamak bir zaman aşımı hatası oluşturur.
+
+#### [Uyarı]()
+
+> `0.5.0` versiyonundan önce, negatif `x` için bir `x> y` vardiyası, `x / 2 ** y`'ye eşdeğerdi, yani sağa kaymalar, negatif sonsuzluğa yuvarlama yerine sıfıra doğru yuvarlama anlamına geliyordu.
+
+#### Toplama, Çıkarma ve Çarpma
+
+Toplama, çıkarma ve çarpma işlemlerinde standart semantic kullanılır. Bu işlemler, tam sayıların tamamlayıcı temsil değeri için de geçerlidir. Örneğin `uint256 (0) - uint256 (1) == 2 ** 256 - 1`. Güvenli akıllı sözleşmeler tasarlarken bu kullanımları ve sonuçlarını hesaba katmanız gerekir.
+
+`-X` ifadesi, `(T (0) - x)` ifadesine eş değerdir, burada `T`, `x`'in bir türüdür. Bu, eğer x'in türü eğer işaretsiz bir tamsayı ise `-x`'in negatif olmayacağı anlamına gelir. Beklenildiği üzere, `x` negatifse `-x` pozitif olabilir. İkisinin tamamlayıcı temsilinden kaynaklanan başka bir uyarı daha yapalım:
 
 ```
+int x = -2**255;
+assert(-x == x);
+
 ```
+Bu, bir sayı negatif olsa bile, olumsuzluğunun her zaman pozitif olacağını varsayamayacağınız anlamına gelir.
+
+#### Bölme
+
+Bir işlemin sonucunun türü her zaman işlenenlerden birinin türü olacağından, tam sayıların bölünmesi her zaman bir tam sayı ile sonuçlanır. Solidity dilinde, bölme sıfıra doğru yuvarlar. Bu, `int256 (-5) / int256 (2) == int256 (-2)` anlamına gelir.
+
+
+#### [Not]()
+
+> Sıfıra bölme hataya neden olur.
+
+#### Modül İşlemi
+
+Bir modül işlemi olan `a % n`, `a`'nın `n` tarafından bölünmesinden sonra kalan `r`'yi verir; burada `q = int (a / n)` ve `r = a - (n * q)` olarak kabul edilir. Modül işlemi, sol işleneniyle (veya sıfır) aynı işaretle sonuçlanır ve `a % n == - (abs (a)% n)`nın negatif a için geçerli olduğu anlamına gelir:
+
++ int256(5) % int256(2) == int256(1)
++ int256(5) % int256(-2) == int256(1)
++ int256(-5) % int256(2) == int256(-1)
++ int256(-5) % int256(-2) == int256(-1)
+
+#### Üstsel İfadeler
+
+Üstel yalnızca atanmamış türler için kullanılabilir. Lütfen kullandığınız türlerin sonucu içerecek kadar büyük olmasına ve potansiyel wrap hatası için önlem aldığınıza emin olun.
+
+#### [Uyarı]()
+
+> EVM tarafından 0 ** 0 değerinin 1 olarak tanımlandığını unutmayın.
+
+#### Sabit Nokta Numaraları
+
+Sabit nokta numaraları henüz Solidity tarafından tam olarak desteklenmiyor. Buna rağmen beyan edilebilirler, ancak atamanamaz veya bir başka bileşen tarafından atanmazlar.
+
+`Fixed / ufixed`: Çeşitli boyutlarda imzalı ve imzasız sabit nokta sayısı. `UfixedMxN` ve `fixedMxN` anahtar sözcükleri için; `M`, tip tarafından alınan bit sayısını temsil eder ve `N`, kaç ondalık sayı kullanılabilir olduğunu gösterir. `M` 8 ile bölünebilir olmalı ve `8 - 256 bit` arasında değişmelidir. `N`, 0 ile 80 arasında olmalıdır. `fixed` ve `ufixed`, sırasıyla `ufixed128x18` ve `ufixed128x18` anlamına da gelir.
+
+**Operatörler:**
+
++ Karşılaştırmalar: <=, <, ==,! =,> =,> (Bool olarak değerlendir)
++ Aritmetik operatörler: +, -, unary -, *, /,% (modulo)
+
+#### [Not]()
+
+> Floating nokta (birçok dilde float ve double, veya IEEE 754 sayıları) ve sabit nokta sayıları arasındaki temel fark, tamsayı ve kesirli kısım için kullanılan bit sayısının (ondalık noktadan sonraki kısım) ilkinde esnek, ikincisinde ise kesin tanımlı olmasıdır. Genel olarak, floating noktalarındaki hemen hemen tüm alan sayıyı temsil etmek için kullanılırken, yalnızca .ok küçük bir bit sayısı ondalık noktasının nerede olduğunu tanımlar.
+
 ```
 ```
 ```

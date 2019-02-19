@@ -2833,11 +2833,140 @@ bytes2 d = hex"123"; // not allowed
 bytes2 e = "x"; // not allowed
 bytes2 f = "xyz"; // not allowed
 ```
-Adresler
+### Adresler
 
 Açıklandığı üzere, sağlama toplamı testini geçen doğru boyutta hex değişmezleri adres türündedir. Başka hiçbir değişmez, dolaylı olarak adres türüne dönüştürülemez.
 
 `address payable` ile sonuçlanması için `bytes20` veya herhangi bir tamsayı türündeki açık dönüşümler uygulanmalıdır.
+
+# Birimler ve Global Olarak Mevcut Değişkenler
+
+## Ether Birimleri
+
+Bir sabit sayı, Ether'in alt sınıfını ifade etmek için bir `wei`, `finney`, `szabo` veya `Ether` eki alabilir; bir postfix olmadan kullanılan Ether sayılarının Wei olduğu varsayılır.
+
+```
+assert(1 wei == 1);
+assert(1 szabo == 1e12);
+assert(1 finney == 1e15);
+assert(1 ether == 1e18);
+
+```
+Alt sınıf eki aslında, onluk bir gücün çarpanı işlevini görür.
+
+## Zaman Birimleri
+
+Gerçek sayılardan sonraki `seconds`, `minutes`, `hours`, `days` ve `weeks` gibi son ekler, saniyelerin temel kabul edildiği bir düzende zaman birimlerini belirlemek için kullanılabilir:
+
++ 1 == 1 saniye
++ 1 dakika == 60 saniye
++ 1 saat == 60 dakika
++ 1 gün == 24 saat
++ 1 hafta == 7 gün
+
+Bu birimleri kullanarak takvim hesaplamaları yaparken dikkat edin, çünkü her yıl 365 güne eşit değildir. Yine aynı sebeple, her gün tam olarak 24 saat de değildir. Artık saniyelerin tahmin edilememesi nedeniyle, kesin bir takvim kütüphanesinin harici bir oracle tarafından güncellenmesi gerekir.
+
+### [Not]()
+
+> Yukarıdaki nedenlerden dolayı `years` eki 0.5.0 versiyonunda kaldırılmıştır.
+
+Bu sonekler değişkenlere uygulanamaz. Örneğin, bir fonksiyon parametresini gün cinsinden yorumlamak istiyorsanız, aşağıdaki şekilde yapabilirsiniz:
+
+```
+function f(uint start, uint daysAfter) public {
+    if (now >= start + daysAfter * 1 days) {
+      // ...
+    }
+}
+```
+## Özel Değişkenler ve Fonksiyonlar
+
+Her zaman global isim olarak var olan ve genellikle blockchain hakkında bilgi sağlamak için kullanılan ya da genel kullanım yardımcı program fonksiyonları olarak işlev gören özel değişkenler ve fonksiyonlar vardır.
+
+### Blok ve İşlem Özellikleri
+
+`blockhash (uint blockNumber) returns (bytes32)`: verilen bloğun hash değeri - geçerli bloklar hariç yalnızca en yeni 256 adet blok için çalışır.
+`block.coinbase (payable address)`: mevcut blok madenci adresi
+`block.difficulty (uint)`: geçerli blok zorluğu
+`block.gaslimit (uint)`: geçerli blok
+`block.number (uint)`: geçerli blok numarası
+`block.timestamp (uint)`: unix döneminden bu yana saniye olarak geçerli blok zaman damgası
+`gasleft () returns (uint256)`: kalan gaz
+`msg.data (byte calldata)`: tamamlanmış call verisi
+`msg.sender (payable address)`: mesajın göndereni (mevcut çağrı)
+`msg.sig (bytes4):` calldata'nın ilk dört baytı (yani fonksiyon tanımlayıcısı)
+`msg.value (uint):` mesaj ile gönderilen wei sayısı
+`now (uint):` geçerli blok zaman damgası (`block.timestamp` için diğer ad)
+`tx.gasprice (uint):` işlemin gaz fiyatı
+`tx.origin (payable address):` işlemin göndereni (tam çağrı zinciri)
+
+### [Not]()
+
+>`Msg.sender` ve `msg.value` dahil tüm `msg` üyelerinin değerleri her harici fonksiyon çağrısı için değişebilir. Buna kütüphane fonksiyonlarına yapılan çağrılar da dahildir.
+
+### [Not]()
+
+Ne yaptığınızı bilmiyorsanız, `blockhash`, `now`ve `block.timestamp`'a birer rastgele kaynak olarak güvenmemenizi öneriyoruz.
+
+Hem `timestamp` hem de `blockhash` madencilerden bir dereceye kadar etkilenebilir. Madencilik topluluğundaki kötü aktörler, örneğin, seçilen bir hash için bir kumarhane ödeme işlevi çalıştırabilir ve eğer para alamazlarsa, farklı bir hash ile yeniden deneme yapabilir.
+
+Geçerli `timestamp`, son bloğun zaman damgasından kesinlikle daha büyük olmalıdır. Daha garantili yol ise bu değerin kanonik zincirde iki ardışık bloğun zaman damgaları arasında bir yerde olacağıdır.
+
+### [Not]()
+
+Blok hashleri, ölçeklenebilirlik nedeniyle tüm bloklar için mevcut değildir. Yalnızca en yeni 256 bloğun karma değerlerine erişebilirsiniz, diğer tüm değerler sıfır olacaktır.
+
+### [Not]()
+
+`Blockhash` fonksiyonu daha önce `block.blockhash` olarak bilinmekteydi. 0.4.22 sürümünde kullanımı azaltıldı ve 0.5.0 sürümünden tamamen kaldırılmıştır.
+
+### [Not]()
+
+`gasLeft` işlevi daha önce `msg.gas` olarak bilinmekteydi. 0.4.21 sürümünde kullanımı azaltılmış ve 0.5.0'da ise sürümden tamamen kaldırılmıştır.
+
+## ABI Kodlama ve Kod Çözme Fonksiyonları
+
++ `abi.decode(bytes memory encodedData, (...)) returns (...):` ABI, verilen verilerin kodunu çözerken, türleri parantez içinde ikinci argüman olarak verilir. Örnek: (`uint a, uint[2] memory b, bytes memory c) = abi.decode(data, (uint, uint[2], bytes`))
++ `abi.encode(...) returns (bytes memory)`: ABI verilen argümanları kodlar
++ `abi.encodePacked(...) returns (bytes memory)`: Verilen bağımsız değişkenlerin paketlenmiş kodlamasını gerçekleştirir. Paketlenmiş kodlamanın belirsiz olabileceğini unutmayın!
++ `abi.encodeWithSelector(bytes4 selector, ...) returns (bytes memory)`: ABI, ikinci değerden başlayarak verilen argümanları kodlar ve verilen dört bayt seçiciyi hazırlar
++ `abi.encodeWithSignature(string memory signature, ...) returns (bytes memory)`: `abi.encodeWithSelector` ile eşdeğer `(abi.encodeWithSelector(bytes4(keccak256(bytes(signature))), ...)`
+
+### [Not]()
+
+Bu kodlama fonksiyonları, harici bir fonksiyon çağırmadan harici fonksiyon çağrıları için veri oluşturmak için kullanılabilir. Dahası, `keccak256 (abi.encodePacked (a, b))`, yapılandırılmış verinin hash değerini hesaplamanın bir yoludur (farklı fonksiyon parametre tipleri kullanarak bir "`hash collusion` yapmanın mümkün olduğunu unutmayın).
+
+Kodlamayla ilgili ayrıntılar için ABI ve paketlenmiş kodlamayla ilgili bölümlere bakın.
+
+## Hata Yönetimi
+
+Hata yönetimi ve ne zaman hangi fonksiyonun kullanılacağı hakkında daha fazla bilgiyi ilgili açıklamanın bulunduğu bölümden edinebilirsiniz.
+
++ `assert(bool koşulu)`: geçersiz bir opcode'a neden olur ve koşulun karşılanmadığı durumlarda değişikliklerin tersine çevrilmesi durumunda - dahili hatalar için kullanılır.
++ r`equire(bool koşulu)`: koşul karşılanmadığında geri döner - girişlerdeki veya harici bileşenlerdeki hatalar için kullanılır.
++ `require(bool koşulu, string memory mesajı)`: koşul karşılanmadığında geri döner - girişlerdeki veya harici bileşenlerdeki hatalar için kullanılır. Ayrıca bir hata mesajı veriyor.
++ r`evert()`: yürütmeyi durdur ve durum değişikliklerini geri alır.
++ `revert(string memory mesajı)`: açıklayıcı bir dizi sağlayarak yürütmeyi iptal etmek ve durum değişikliklerini geri almak için kullanılır.
+
+## Matematiksel ve Şifreleme Fonksiyonları
+
++ `addmod(uint x, uint y, uint k) returns (uint)`: Hesaplamanın (x + y)% k olduğu yerde ilavenin keyfi bir hassasiyetle yapıldığı ve 2 ** 256 civarında sarılmadığı hesaplanır. 0.5.0 sürümünden itibaren k! = 0 olduğunu kabul edin.
++ `mulmod(uint x, uint y, uint k) returns (uint)`: (x * y)% k değerini hesaplayın, burada çarpma işlemi keyfi bir şekilde yapılır ve 2 ** 256 değerinde sarmaz. 0.5.0 sürümünden itibaren k! = 0 olduğunu kabul edin.
++ `keccak256(bytes memory) returns (bytes32)`: Giren değerin(input) Keccak-256 hash değerini hesaplar.
++ `sha256(bytes memory) returns (bytes32)`:Giren değerin SHA-256 değerini hesaplar.
++ `ripemd160(bytes memory) returns (bytes20)`: RIPEMD-160 giren değerinin hash değerini hesaplar
++ `ecrecover(bytes32 hash, uint8 v, bytes32 r, bytes32 s) returns (address)`: genel anahtarla ilişkilendirilmiş adresi eliptik eğri imzasından kurtarır veya hata durumunda sıfır döndürür ([örnek kullanım](https://ethereum.stackexchange.com/questions/1777/workflow-on-signing-a-string-with-private-key-followed-by-signature-verificatio))
+
+`Ecrecover` fonksiyonu bir adres döndürür, bu adres `non-payable` türündedir. Kurtarılan adrese para aktarmanız gerekebilir diye, dönüşüm için `payable` türünde bir adres bakın.
+
+Sha256, ripemd160 için Gaz Dışı ile karşılaşıyor olabilirsiniz veya özel bir blok zincir üzerinde tutuyorsunuz. Bunun nedeni, önceden derlenmiş sözleşmeler olarak uygulananların ve bu sözleşmelerin yalnızca ilk mesajı aldıktan sonra var olmalarıdır (sözleşme kodları kodlanmış olsa da). Mevcut olmayan sözleşmelere verilen mesajlar daha pahalıdır ve bu nedenle yürütme bir Gaz Dışı hatasıyla sonuçlanır. Bu soruna yönelik bir geçici çözüm ilk önce örn. 1 Gerçekleştirdiğiniz sözleşmelerde kullanmadan önce her bir sözleşmeye Wei. Bu resmi veya test ağında bir sorun değil.
+
+Not
+
+Keccak256 için sha3 adında, 0.5.0 sürümünden çıkarılmış bir takma ad vardı.
+
+Adres Türleri Üyeleri
+
 ```
 ```
 ```
@@ -2868,14 +2997,7 @@ Açıklandığı üzere, sağlama toplamı testini geçen doğru boyutta hex de�
 ```
 ```
 ```
-```
-```
-```
-```
-v
-```
-```
-v
+
 
 
 

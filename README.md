@@ -2957,15 +2957,73 @@ Hata yönetimi ve ne zaman hangi fonksiyonun kullanılacağı hakkında daha faz
 + `ripemd160(bytes memory) returns (bytes20)`: RIPEMD-160 giren değerinin hash değerini hesaplar
 + `ecrecover(bytes32 hash, uint8 v, bytes32 r, bytes32 s) returns (address)`: genel anahtarla ilişkilendirilmiş adresi eliptik eğri imzasından kurtarır veya hata durumunda sıfır döndürür ([örnek kullanım](https://ethereum.stackexchange.com/questions/1777/workflow-on-signing-a-string-with-private-key-followed-by-signature-verificatio))
 
-`Ecrecover` fonksiyonu bir adres döndürür, bu adres `non-payable` türündedir. Kurtarılan adrese para aktarmanız gerekebilir diye, dönüşüm için `payable` türünde bir adres bakın.
+### [Not]()
 
-Sha256, ripemd160 için Gaz Dışı ile karşılaşıyor olabilirsiniz veya özel bir blok zincir üzerinde tutuyorsunuz. Bunun nedeni, önceden derlenmiş sözleşmeler olarak uygulananların ve bu sözleşmelerin yalnızca ilk mesajı aldıktan sonra var olmalarıdır (sözleşme kodları kodlanmış olsa da). Mevcut olmayan sözleşmelere verilen mesajlar daha pahalıdır ve bu nedenle yürütme bir Gaz Dışı hatasıyla sonuçlanır. Bu soruna yönelik bir geçici çözüm ilk önce örn. 1 Gerçekleştirdiğiniz sözleşmelerde kullanmadan önce her bir sözleşmeye Wei. Bu resmi veya test ağında bir sorun değil.
+`Ecrecover` fonksiyonu bir adres döndürür, bu adres `non-payable` türündedir. Kurtarılan adrese para aktarmanız gerekebilir diye, dönüşüm için `payable` türünde bir adres kullanılması gerekir.
 
-Not
+`Sha256` ve `ripemd160` için *Out-Of-Gas* ile karşılaşıyor olabilirsiniz veya **özel bir blokchain ağı** üzerinde `ecrecover`  de aynı sonucu verebilir. Bunun nedeni, önceden derlenmiş sözleşmeler olarak uygulananların ve bu sözleşmelerin yalnızca ilk mesajı aldıktan sonra var olmalarıdır (sözleşme kodları kodlanmış olsa da). Mevcut olmayan sözleşmelere verilen mesajlar daha pahalıdır ve bu nedenle yürütme bir *Out-Of-Gas* hatasıyla sonuçlanır. Bu soruna yönelik bir geçici çözüm ilk önce tüm sözleşmelere örneğin 1 Wei göndermeniz ve daha sonra gerçek sözleşmeye geçmenizdir. Resmi veya test ağında böyle bir sorunla karşılaşmassınız.
 
-Keccak256 için sha3 adında, 0.5.0 sürümünden çıkarılmış bir takma ad vardı.
+### [Not]()
 
-Adres Türleri Üyeleri
+> `Keccak256` 0.5.0 sürümünden önce `sha3` adıyla biliniyordu. Şuanda `sha3` kullanılmıyor.
+
+## Adres Türleri Öğeleri
+
++ `<adres> .balance (uint256)`: Wei biriminde adres bakiyesi
++ `<address payable>.transfer(uint256 amount)`: Verilen miktarda Wei'yi Adres'e gönderif, başarısızlık durumunda mebla geri döner, ileriye dönük 2300 gaz borusu gönderir.
++ `<address payable>.send(uint256 amount) returns (bool)`: Verilen miktarda Wei'yi Adrese gönderin, başarısızlık durumunda false verir, ileriye dönük 2300 gaz borusu gönderir.
++ `<address>.call(bytes memory) returns (bool, bytes memory)`: Verilen yük ile düşük seviye `CALL` düzenler, başarı durumunu ve iade verilerini geri gönderir.
++ `<address>.delegatecall(bytes memory) returns (bool, bytes memory)`: Verilen yük ile düşük seviye `DELEGATECALL` düzenler, başarı durumu ve iade verilerini iletir.
++ `<address>.staticcall(bytes memory) returns (bool, bytes memory)`: Verilen yük ile düşük seviyeli `STATICCALL` düzenler, başarı durumu ve iade verilerini iletir, mevcut tüm gazları yönlendirir.
+  
+Daha fazla bilgi için *Adres bölümüne* bakınız.
+
+### [Uyarı]()
+
+> Tür kontrolünü, fonksiyon varlığı kontrolünü ve argüman paketlemesini atladığı için başka bir sözleşme işlevini yürütürken mümkün olduğunda `.call ()` kullanmaktan kaçınmalısınız.
+
+### [Uyarı]()
+
+> `send` kullanımında bazı tehlikeler vardır: Çağrı yığını derinliği 1024'te ise (bu her zaman arayanlar tarafından zorunlu tutulabilir) aktarım başarısız olur veya alıcı gazın bitmesi durumunda da başarısız olur. Bu nedenle, güvenli Ether transferlerini yapmak için, her zaman gönderinin geri dönüş değerini kontrol edin, transfer kullanın veya daha iyisi: Alıcının para çekeceği bir yöntem tercih edin.
+
+### [Not]()
+
+> 0.5.0 sürümünden önce, Solidity, adres üyelerine, örneğin `this.balance` gibi bir sözleşme örneği tarafından erişilmesine izin veriyordu. Bu şimdi yasaktır ve adrese açıkça bir dönüşüm yapılmalıdır: `address (this).balance` gibi.
+
+### [Not]()
+
+> Durum değişkenlerine düşük seviyeli bir temsilci üzerinden erişilirse, çağrılan sözleşmenin, arayan sözleşmenin depolama değişkenlerine ada göre doğru şekilde erişebilmesi için iki sözleşmenin depolama yerleşimi aynı hizada olmalıdır. Tabii ki, depolama işaretçilerinin üst düzey kütüphanelerde olduğu gibi fonksiyon argümanları olarak iletilmesi durumunda geçerli değildir.
+
+### [Not]()
+
+> 0.5.0 sürümünden önce, `.call`, `.delegatecall` ve `.staticcall` yalnızca getiri koşulunu döndürürdü, return verilerini ise döndürmezdi.
+
+### [Not]()
+
+> 0.5.0 versiyonundan önce, `delegatecall`'a benzer fakat biraz farklı bir anlam taşıyan `callcode` adlı bir öğe vardı.
+
+## Sözleşmeyle İlgili
+
++ `this` (geçerli sözleşmenin türü): Açıkça Adrese çevrilebilir olan mevcut sözleşme
++ `selfdestruct(address payable alıcısı)`: Mevcut sözleşmeyi imha etmek, fonlarını verilen adrese göndermek.
+
+Ayrıca, mevcut sözleşmenin tüm fonksiyonları doğrudan geçerli fonksiyon dahil olmak üzere çağrılabilir.
+
+### [Not]()
+
+0.5.0 sürümünden önce, `selfdestruct` ile aynı semantiklere sahip `suicide` denilen bir fonksiyon vardı.
+
+## Tip Bilgisi
+
+`Type(X)`, X türü hakkında bilgi almak için kullanılabilir. Şu anda, bu özellik için sınırlı destek var, ancak gelecekte genişletilebilir. C tipi bir sözleşme için aşağıdaki özellikler mevcuttur:
+
++ type(C).creationCode:
+
+Sözleşmenin oluşturma kodunu içeren memory bayt dizisi. Bu, satır içi derlemede, özellikle `create2` opcode kullanılarak, özel oluşturma yordamları için kullanılabilir. Bu özelliğe sözleşmenin kendisinde veya türetilmiş herhangi bir sözleşmede erişilemez. Bayt kodunun çağrı sitesinin bayt koduna dahil edilmesine neden olur ve bu nedenle böyle dairesel referanslar mümkün değildir.
+
++ `type(C).runtimeCode`:
+
+Sözleşmenin çalışma zamanı kodunu içeren bellek bayt dizisi. Bu, genellikle `C`'nin kurucusu tarafından dağıtılan koddur. `C`, satır içi derleme kullanan bir kurucuya sahipse, bu gerçekte dağıtılan bayt kodundan farklı olabilir. Ayrıca, kitaplıkların düzenli aramalara karşı korunmak için konuşlandırma sırasında çalışma zamanı bayt kodunu değiştirdiğini unutmayın. Bu özellik için `.creationCode` ile aynı kısıtlamalar geçerlidir.
 
 ```
 ```

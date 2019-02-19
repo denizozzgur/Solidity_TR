@@ -2151,18 +2151,18 @@ String değişmezleri, çift veya tek tırnak ("foo" veya "bar") ile yazılır. 
 
 Dize değişmezleri aşağıdaki kaçış karakterlerini destekler:
 
-+ \ <newline> (gerçek bir yeni satırdan kaçar)
-+ \\ (ters eğik çizgi)
-+ \' (tek alıntı)
-+ \" (çift alıntı)
-+ \b (geri al)
-+ \f (form beslemesi)
-+ \n (yeni satır)
-+ \r (satır başı)
-+ \t (sekme)
-+ \v (dikey sekme)
-+ \xNN    (altıgen kaçış, aşağıya bakınız)
-+ \uNNNN   (unicode kaçış, aşağıya bakın)
++ `\`   <newline> (gerçek bir yeni satırdan kaçar)
++ `\\` (ters eğik çizgi)
++ `\'` (tek alıntı)
++ `\"` (çift alıntı)
++ `\b` (geri al)
++ `\f` (form beslemesi)
++ `\n` (yeni satır)
++ `\r` (satır başı)
++ `\t` (sekme)
++ `\v` (dikey sekme)
++ `\xNN`    (altıgen kaçış, aşağıya bakınız)
++ `\uNNNN`  (unicode kaçış, aşağıya bakın)
   
 `\xNN` onaltılık bir değer alır ve uygun baytı ekler. `\uNNNN` ise bir Unicode kod noktası alır ve bir UTF-8 dizisi ekler.
 
@@ -2174,31 +2174,710 @@ def"
 ```
 Yeni bir satır olmayan herhangi bir unicode line terminator (yani LF, VF, FF, CR, NEL, LS, PS), değişmez dizgeyi sonlandırır. Yeni satır, yalnızca bir `\` tarafından gelmemişse, dizgiyi hazırlar.
 
+#### Onaltılık Değişmeyenler
+
+Onaltılık değişmeyenler başına "hex" eki gelen ve çift veya tek tırnak içinde gösterilen değerlerdir( örneğin `hex"001122FF"`). Sekiz sayı ve harf değerinden meydana gelen bu değerlerin içerdikleri ifadelerin her biri iki başka ifadeyi temsilen yazılır.
+
+Onaltılık değişmeyenler `string` değişmezleri gibi davranır ve aynı dönüştürülebilirlik sınırlamalarına sahiptir.
+
+#### Enumlar
+
+Enumlar, Solidity'de kullanıcı tanımlı bir tür oluşturmanın bir yoludur. Açıkça tüm tam sayı türlerine dönüştürülebilirler ancak örtük dönüştürmelere izin verilmez. Tamsayıdan açıkça yapılan dönüştürme, çalışma zamanında değerin enum aralığının içinde olup olmadığını kontrol eder; eğer değilse başarısızlığa neden olur. Enumlar en az bir üyeye ihtiyaç duyar.
+
+Veri gösterimi, C'deki enums'lerle aynıdır: Seçenekler, 0'dan başlayan işaretsiz tamsayı değerleri ile temsil edilir.
+
+```
+pragma solidity >=0.4.16 <0.6.0;
+
+contract test {
+    enum ActionChoices { GoLeft, GoRight, GoStraight, SitStill }
+    ActionChoices choice;
+    ActionChoices constant defaultChoice = ActionChoices.GoStraight;
+
+    function setGoStraight() public {
+        choice = ActionChoices.GoStraight;
+    }
+
+    // Since enum types are not part of the ABI, the signature of "getChoice"
+    // will automatically be changed to "getChoice() returns (uint8)"
+    // for all matters external to Solidity. The integer type used is just
+    // large enough to hold all enum values, i.e. if you have more than 256 values,
+    // `uint16` will be used and so on.
+    function getChoice() public view returns (ActionChoices) {
+        return choice;
+    }
+
+    function getDefaultChoice() public pure returns (uint) {
+        return uint(defaultChoice);
+    }
+}
+```
+### Fonksiyon Türleri
+
+Fonksiyon türleri, sözleşmede uygulanilecek işlemlerin çeşitleridir . Fonksiyon türündeki değişkenler yine fonksiyonlar tarafından atanabilir. Fonksiyonlardaki parametreler, fonksiyonlar arasında bilgi veya komut geçişi yapmak kadar başka kaynaklardan bilgiyi döndürmek için de kullanılır. Temelde iki farklı fonksiyon türü vardır - *dahili* ve *harici* fonksiyonlar:
+
+*Dahili fonksiyonlar*, yalnızca geçerli sözleşmenin içinde (daha özel olarak, iç kütüphane fonksiyonlarını ve miras alınan fonksiyonları de içeren geçerli kod ünitesinin içinde) çağrılabilir, çünkü mevcut sözleşmenin kapsamı dışında yürütülemezler. Bir iç fonksiyon çağrısı, iç sözleşmedeki bir fonksiyonun çağrılması gibi, giriş etiketine atlayarak gerçekleştirilir.
+
+*Harici fonksiyonlar* bir adres ve fonksiyon imzasından oluşur ve harici fonksiyon çağrılarından iletilebilir ve geri çağrılabilirler.
+
+Fonksiyon türleri aşağıdaki şekilde belirtilmiştir:
+```
+function (<parameter types>) {internal|external} [pure|view|payable] [returns (<return types>)]
+```
+
+Parametre türlerinin aksine, dönüş tipleri boş olamaz - fonksiyon hiçbir şey döndürmezse, `returns (<return types>)` kısmı tamamen çıkarılmalıdır.
+
+Varsayılan olarak, fonskiyon türleri dahilidir, böylece `internal` anahtar kelimesinin kullanılmasına ihtiyaç duyulmaz. Bunun sadece fonksiyon tipleri için geçerli olduğuna dikkat ediniz. Sözleşmelerde tanımlanan fonksiyonlar için görünürlük açıkça belirtilmelidir, varsayılanları yoktur.
+
+#### Dönüşümler:
+
+Harici fonksiyon türünün bir değeri açıkça fonksiyon sözleşmesinin `adress` türüne dönüştürülebilir.
+
+A fonksiyon tipi, sadece ve sadece parametre tipleri, return tipleri, iç / dış özellikleri aynı olan ve kendinden daha az kısıtlayıcı olan başka bir B fonksiyonuna dönüştürülebilir. Detaylandırırsak:
+
++ `pure` fonksiyonları, `view` ve `non-payable` fonksiyonlarına dönüştürülebilir.
++ `view` fonksiyonları, `non-payable` fonksiyonlarına dönüştürülebilir.
++ `payable` fonskiyonları, `non-payable` fonksiyonlarına dönüştürülebilir.
+
+Fonksiyon türleri arasında başka hiçbir dönüşüm mümkün değildir.
+
+`payable` ve `non-payable` fonksiyonları hakkındaki kural biraz kafa karıştırıcı olabilir, fakat esasen, eğer bir fonksiyon `payable` ise, bu da sıfır Ether ödemesini kabul ettiği anlamına gelir, bu yüzden ödenmesi de mümkün değildir. Öte yandan, `non-payable` bir fonksiyon kendisine gönderilen Ether'i reddeder, bu yüzden `non-payable` işlevler `payable` fonksiyonlara dönüştürülemez.
+
+Bir fonksiyon tipi değişkeni başlatılmadıysa, çağırılması başarısız bir iddiaya neden olur. Aynı fonksiyonu, `delete` işlevini kullandıktan sonra çağırırsanız aynı sonuç ile karşılaşırsınız.
+
+Harici fonksiyon türleri, Solidity bağlamı dışında kullanılırsa, fonksiyon tanımlayıcısı tarafından izlenen adresi tek bir `bytes24` türünde kodlayan bir `function` olarak işlem görürler.
+
+Mevcut sözleşmelerde `public` fonksiyonunun hem iç hem de dış fonksiyon olarak kullanılabileceğini unutmayın. Fonskiyonu bir iç fonksiyon olarak kullanmak için `f`yi, yalnızca dış biçimini kullanmak için `this.f` öğesini kullanın.
+
+`public` (veya harici) fonksiyonlar aşağıdaki üyelere sahiptir:
+
++ `.selector` ABI fonksiyon seçicisini döndürür
++ `.gas (uint)` çağrıldığında, belirtilen gaz miktarını hedef fonksiyona gönderecek olan çağrılabilen bir fonksiyon nesnesi döndürür. Daha fazla bilgi için *Harici Fonksiyon Çağrıları* bölümüne bakınız.
++ `.value (uint)` çağrıldığında, belirtilen miktardaki wei'yi hedef fonksiyona gönderecek olan çağrılabilir bir fonksiyon nesnesi döndürür. Daha fazla bilgi için *Harici Fonksiyon Çağrıları* bölümüne bakınız.
+
+Öğelerin nasıl kullanılacağını gösteren örnek:
+
+```
+pragma solidity >=0.4.16 <0.6.0;
+
+contract Example {
+  function f() public payable returns (bytes4) {
+    return this.f.selector;
+  }
+  function g() public {
+    this.f.gas(10).value(800)();
+  }
+}
+```
+Dahili işlev türlerinin nasıl kullanılacağını gösteren örnek:
+
+```
+pragma solidity >=0.4.16 <0.6.0;
+
+library ArrayUtils {
+  // internal functions can be used in internal library functions because
+  // they will be part of the same code context
+  function map(uint[] memory self, function (uint) pure returns (uint) f)
+    internal
+    pure
+    returns (uint[] memory r)
+  {
+    r = new uint[](self.length);
+    for (uint i = 0; i < self.length; i++) {
+      r[i] = f(self[i]);
+    }
+  }
+  function reduce(
+    uint[] memory self,
+    function (uint, uint) pure returns (uint) f
+  )
+    internal
+    pure
+    returns (uint r)
+  {
+    r = self[0];
+    for (uint i = 1; i < self.length; i++) {
+      r = f(r, self[i]);
+    }
+  }
+  function range(uint length) internal pure returns (uint[] memory r) {
+    r = new uint[](length);
+    for (uint i = 0; i < r.length; i++) {
+      r[i] = i;
+    }
+  }
+}
+
+contract Pyramid {
+  using ArrayUtils for *;
+  function pyramid(uint l) public pure returns (uint) {
+    return ArrayUtils.range(l).map(square).reduce(sum);
+  }
+  function square(uint x) internal pure returns (uint) {
+    return x * x;
+  }
+  function sum(uint x, uint y) internal pure returns (uint) {
+    return x + y;
+  }
+}
+```
+Harici işlev türlerini kullanan başka bir örnek:
+```
+pragma solidity >=0.4.22 <0.6.0;
+
+contract Oracle {
+  struct Request {
+    bytes data;
+    function(uint) external callback;
+  }
+  Request[] requests;
+  event NewRequest(uint);
+  function query(bytes memory data, function(uint) external callback) public {
+    requests.push(Request(data, callback));
+    emit NewRequest(requests.length - 1);
+  }
+  function reply(uint requestID, uint response) public {
+    // Here goes the check that the reply comes from a trusted source
+    requests[requestID].callback(response);
+  }
+}
+
+contract OracleUser {
+  Oracle constant oracle = Oracle(0x1234567); // known contract
+  uint exchangeRate;
+  function buySomething() public {
+    oracle.query("USD", this.oracleResponse);
+  }
+  function oracleResponse(uint response) public {
+    require(
+        msg.sender == address(oracle),
+        "Only oracle can call this."
+    );
+    exchangeRate = response;
+  }
+}
+
+```
+#### [Not]()
+
+> Lambda veya satır içi fonksiyonları kullanımı planlanıyor, ancak henüz desteklenmiyor.
+
+## Referans Türleri
+
+Referans türünün değerleri, birden fazla farklı isim üzerinden değiştirilebilir. Bu durumu, her değişken tipi kullanıldığında bağımsız bir kopya aldığınız değer tipleriyle karşılaştırın. Bu özellik sebebiyle, referans türlerinin değer türlerinden daha dikkatli ele alınması gerekir. Şu anda, referans türleri yapılar, diziler ve eşlemeler içermektedir. Bir referans türü kullanıyorsanız, daima türün depolandığı veri alanını açıkça belirtmeniz gerekir: `memory` (ömrü bir fonksiyonu çağrısı ile sınırlıdır), `storage` (durum değişkenlerinin saklandığı konum) veya `calldata` (özel veriler fonksiyon argümanlarını içeren konum, yalnızca harici işlev çağrısı parametreleri için kullanılabilir).
+
+Veri konumunu değiştiren bir atama veya tür dönüşümü her zaman otomatik bir kopyalama işlemine tabi tutulurken, aynı veri konumunun içindeki atamalar yalnızca bazı durumlarda depolama türleri için kopyalanır.
+
+### Veri Konumu
+
+Her referans türü, yani diziler ve yapılar, depolandığı yer hakkında “veri konumu” isimli bir ek açıklamaya sahiptir. Üç veri konumu vardır: `memory`, `storage` ve `calldata`. `Calldata`, yalnızca harici sözleşme fonksiyonlarının parametreleri için geçerli ve bu parametre türü için gereklidir. `Calldata`, fonksiyon argümanlarının saklandığı ve çoğunlukla `memory` gibi davrandığı değiştirilemez, kalıcı olmayan bir alandır.
+
+### [Not]()
+
+> 0.5.0 sürümünden önce, veri konumu atlanabilir ve değişken türüne, fonksiyon türüne vb. bağlı olarak varsayılan konumlar kullanılabilirdi Şuan ise tüm karmaşık türleri için açık bir veri konumu verilmesi gerekir.
+
+#### Veri Konumu Ve Atama Davranışı
+
+Veri yerleri sadece verilerin kalıcılığıyla değil aynı zamanda atandıkları değerlerin semanticleri ile ilgilidir:
+
++ `Memory` ve `storage` (veya `calldata`) arasındaki atamalar her zaman bağımsız bir kopya oluşturur.
++ `Memory`den `memory`e yapılan atamalar yalnızca referans oluşturur. Bu, bir `memory` değişkeninde yapılan değişikliklerin aynı verilere başvuran tüm diğer `memory` değişkenlerinde de görülebileceği anlamına gelir.
++ `Storage`dan yerel `storage` değişkenine yapılan atamalar da yalnızca bir referans atar.
+
+```
+pragma solidity >=0.4.0 <0.6.0;
+
+contract C {
+    uint[] x; // the data location of x is storage
+
+    // the data location of memoryArray is memory
+    function f(uint[] memory memoryArray) public {
+        x = memoryArray; // works, copies the whole array to storage
+        uint[] storage y = x; // works, assigns a pointer, data location of y is storage
+        y[7]; // fine, returns the 8th element
+        y.length = 2; // fine, modifies x through y
+        delete x; // fine, clears the array, also modifies y
+        // The following does not work; it would need to create a new temporary /
+        // unnamed array in storage, but storage is "statically" allocated:
+        // y = memoryArray;
+        // This does not work either, since it would "reset" the pointer, but there
+        // is no sensible location it could point to.
+        // delete y;
+        g(x); // calls g, handing over a reference to x
+        h(x); // calls h and creates an independent, temporary copy in memory
+    }
+
+    function g(uint[] storage) internal pure {}
+    function h(uint[] memory) public pure {}
+}
+
+```
+## Diziler
+
+Diziler, derleme zamanı sabit veya dinamik bir boyuta sahip olabilirler.
+
+Sabit boyutlu bir `k` dizisinin ve `T` öğe türünün ikisi birleşerek `T[k]`i oluştururlar. `T[]` normalde dinamik bir boyutlu bir diziyi ifade eder.
+
+Örneğin, 5 dinamik `uint` dizisinden oluşan bir dizi uint `[][5]` olarak yazılır. Gösterim diğer bazı dillere göre tersine çevrilmiştir. Solidity dilince, `X[3]`, `X`'in kendisi bir dizi olsa bile, her zaman `X` türünde üç öğe içeren bir dizidir. `C` gibi diğer dillerde durum böyle değildir.
+
+Endeksler sıfır tabanlıdır ve erişim bildirimin tersi yöndedir.
+
+Örneğin, değişken bir uint `[][5]` `x` belleğiniz varsa, üçüncü dinamik dizideki ikinci `uint`'e `x[2][1]` kullanarak erişirsiniz ve üçüncü dinamik diziye erişmek için `x[3]` kullanırsınız. Yine, bir dizi de olabilen `T` tipi için `T[5] a`  diziniz varsa, o zaman `[2]` her zaman T tipine sahiptir.
+
+Dizi öğeleri, eşleme veya yapı dahil olmak üzere herhangi bir türde olabilir. Tipler için genel kısıtlamalar geçerlidir, çünkü bu eşlemeler yalnızca `storage` verileri konumunda saklanabilir ve herkes tarafından görülebilen fonksiyonlar ABI türleri olan parametrelere ihtiyaç duyar.
+
+Durum değişkeni dizileri `public` olarak dönüştürmek ve Solidity'nin bir alıcı oluşturmasını sağlamak mümkündür. Sayısal endeks alıcı için gerekli bir parametre haline gelir.
+
+Sonundan bir diziye erişilmesi başarısız bir iddiaya neden olur. Sonunda yeni bir öğe eklemek için `.push()` yöntemini kullanabilir veya boyutunu değiştirmek için `.length` yöntemine başvurabilirsiniz (uyarılar için aşağıya bakın). `.lenght` yöntemini daha çok öğe eklemek için de kullanabilirisniz.
+
+## Diziler Olarak `Byte` ve `String`
+
+`Byte` ve `String` değişken türleri özel dizilerdir. Bir bayt `byte[]`e benzer, ancak `calldata` ve `memory`de daha sıkı paketlenmiştir. `String` `byte`a eşittir, ancak uzunluk veya indeks erişimine izin vermez.
+
+Solidity dilinin dizi düzenleme fonksiyonu yoktur, ancak üçüncü taraf dizi kütüphaneleri vardır. Ayrıca `keccak256 (abi.encodePacked (s1)) == keccak256 (abi.encodePacked (s2))` kullanarak iki dizgiyi karşılaştırabilir ve `abi.encodePacked (s1, s2)` kullanarak iki dizgiyi birleştirebilirsiniz.
+
+`Byte[]` yerine `bytes` kullanmalısınız çünkü daha ucuzdur, çünkü `byte[]` elemanlar arasında 31 doldurma baytı ekler. Genel bir kural olarak, isteğe bağlı uzunluktaki ham bayt verileri için bayt ve isteğe bağlı uzunluktaki dize (UTF-8) verileri için `string` kullanın. Uzunluğu belirli sayıda bayt ile sınırlandırabilirseniz, her zaman çok daha ucuz oldukları için `bayt1` ile `bayt32` arasındaki değer türlerinden birini kullanın.
+
+`S` dizgisinin bayt temsiline erişmek istiyorsanız, `bytes(s).length / bytes(s)[7] = 'x';` kullanın. Bunu yaparak, tek tek karakterlere değil de, UTF-8 gösteriminin düşük seviye baytlarına eriştiğinizi unutmayın.
+
+## Bellek Dizilerini Ayırma
+
+Çalışma zamanına bağlı uzunluktaki bellekte(memory) diziler oluşturmak için 'new' anahtar sözcüğünü kullanmanız gerekir. Depolama dizilerinin aksine, bellek dizilerini yeniden boyutlandırmak mümkün değildir (örneğin '.onth' üyesini atayarak). İstenilen boyutu önceden hesaplamanız veya yeni bir bellek dizisi yaratmanız ve her öğeyi kopyalamanız gerekir.
+
+```
+pragma solidity >=0.4.16 <0.6.0;
+
+contract C {
+    function f(uint len) public pure {
+        uint[] memory a = new uint[](7);
+        bytes memory b = new bytes(len);
+        assert(a.length == 7);
+        assert(b.length == len);
+        a[6] = 8;
+    }
+}
+```
+Dizi Değişmezleri
+
+Bir dizi değişmezi, köşeli parantez `([...])` içine alınmış bir veya daha fazla ifadenin virgülle ayrılmış listesi şeklinde görünür. Örneğin `[1, a, f (3)]`. Tüm öğelerin örtük olarak dönüştürülebileceği ortak bir tür olması gerekir. Bu, dizinin temel türüdür.
+
+Dizi değişmezleri her zaman statik boyutlu bellek dizileridir.
+
+Aşağıdaki örnekte, `[1, 2, 3]` türü `uint8[3] memory` türündedir. Bu sabitlerin her birinin tipi `uint8` olduğundan, sonucun bir `[3] memory`olmasını istiyorsanız, ilk öğeyi `uint`'e dönüştürmeniz gerekir.
+
+```
+pragma solidity >=0.4.16 <0.6.0;
+
+contract C {
+    function f() public pure {
+        g([uint(1), 2, 3]);
+    }
+    function g(uint[3] memory) public pure {
+        // ...
+    }
+}
+
+```
+Sabit boyutlu bellek dizileri, dinamik boyutlu bellek dizilerine atanamaz, yani aşağıdakiler mümkün değildir:
+```
+pragma solidity >=0.4.0 <0.6.0;
+
+// This will not compile.
+contract C {
+    function f() public {
+        // The next line creates a type error because uint[3] memory
+        // cannot be converted to uint[] memory.
+        uint[] memory x = [uint(1), 3, 4];
+    }
+}
+```
+Gelecekte bu kısıtlamanın kaldırılması planlanıyor, ancak ABI’de dizilerin nasıl iletildiğinden dolayı bazı komplikasyonlar yaratıyor.
+
+## Dizi Öğeleri
+
+**Uzunluk:**
+
+Dizilerin, eleman sayılarını içeren bir `.lenght` öğesi vardır. Bellek dizilerinin uzunluğu (ancak dinamiktir, yani çalışma zamanı parametrelerine bağlı olabilir) oluşturulduktan sonra sabittir. Dinamik boyutlu dizilerde (yalnızca depolama için kullanılabilir), bu öğe diziyi yeniden boyutlandırmak için atanabilir. Geçerli uzunluk dışındaki öğelere erişmek, diziyi otomatik olarak yeniden boyutlandırmaz; bunun yerine başarısız bir iddiaya neden olur. Uzunluğun arttırılması, diziye sıfırdan başlatılmış yeni öğeler ekler. Uzunluğu azaltmak, örtük bir işlem gerçekleştirir. Ref: kaldırılan öğelerin her birini `delete` yöntemi ile silin. Depoda bulunmayan dinamik olmayan bir diziyi yeniden boyutlandırmayı denerseniz, almanız gereken `Value must be an lvalue` hatası olmalıdır.
+
+**push**:
+
+Dinamik depolama dizileri ve baytlar (string değil), dizinin sonuna bir eleman eklemek için kullanabileceğiniz `.push` adlı bir fonksiyona sahiptir. Öğe sıfırda başlatılır. Fonksiyon yeni uzunluğu döndürür.
+
+**pop:**
+
+Dinamik depolama dizileri ve baytlar (string değil), bir elemanı dizinin sonundan çıkarmak için kullanabileceğiniz `.pop` adlı bir fonksiyona sahiptir. Bu aynı zamanda dolaylı olarak kaldırılan öğe için `.delete`i çağırır.
+
+### [Uyarı]()
+
+>`.Length--` öğesini boş bir dizide kullanırsanız, aşağı akışa neden olur ve bu nedenle uzunluğu `2 ** 256-1` olarak ayarlar.
+
+### [Not]()
+
+>Bir depolama dizisinin uzunluğunun arttırılması sabit gaz maliyetlerine sahiptir, çünkü depolamanın sıfırlandığı varsayılır, uzunluğu düşürürken en yine bu sabit maliyete sahiptir. Kaldırılan elemanların açıkça temizlenmesini içerir ve `delete` yöntemini çağırır.
+
+### [Not]()
+
+>Dizilerin harici fonksiyonlarda kullanılması henüz mümkün değildir (ancak ortak fonksiyonlarda desteklenirler).
+
+### [Not]()
+
+>`Byzantium`'dan önceki EVM versiyonlarında, fonksiyon çağrılarından dönen dinamik dizilere erişmek mümkün değildi. Dinamik dizileri döndüren fonksiyonları çağırırsanız, `Byzantium` moduna ayarlanmış bir EVM kullandığınızdan emin olun.
+
+```
+pragma solidity >=0.4.16 <0.6.0;
+
+contract ArrayContract {
+    uint[2**20] m_aLotOfIntegers;
+    // Note that the following is not a pair of dynamic arrays but a
+    // dynamic array of pairs (i.e. of fixed size arrays of length two).
+    // Because of that, T[] is always a dynamic array of T, even if T
+    // itself is an array.
+    // Data location for all state variables is storage.
+    bool[2][] m_pairsOfFlags;
+
+    // newPairs is stored in memory - the only possibility
+    // for public contract function arguments
+    function setAllFlagPairs(bool[2][] memory newPairs) public {
+        // assignment to a storage array performs a copy of ``newPairs`` and
+        // replaces the complete array ``m_pairsOfFlags``.
+        m_pairsOfFlags = newPairs;
+    }
+
+    struct StructType {
+        uint[] contents;
+        uint moreInfo;
+    }
+    StructType s;
+
+    function f(uint[] memory c) public {
+        // stores a reference to ``s`` in ``g``
+        StructType storage g = s;
+        // also changes ``s.moreInfo``.
+        g.moreInfo = 2;
+        // assigns a copy because ``g.contents``
+        // is not a local variable, but a member of
+        // a local variable.
+        g.contents = c;
+    }
+
+    function setFlagPair(uint index, bool flagA, bool flagB) public {
+        // access to a non-existing index will throw an exception
+        m_pairsOfFlags[index][0] = flagA;
+        m_pairsOfFlags[index][1] = flagB;
+    }
+
+    function changeFlagArraySize(uint newSize) public {
+        // if the new size is smaller, removed array elements will be cleared
+        m_pairsOfFlags.length = newSize;
+    }
+
+    function clear() public {
+        // these clear the arrays completely
+        delete m_pairsOfFlags;
+        delete m_aLotOfIntegers;
+        // identical effect here
+        m_pairsOfFlags.length = 0;
+    }
+
+    bytes m_byteData;
+
+    function byteArrays(bytes memory data) public {
+        // byte arrays ("bytes") are different as they are stored without padding,
+        // but can be treated identical to "uint8[]"
+        m_byteData = data;
+        m_byteData.length += 7;
+        m_byteData[3] = 0x08;
+        delete m_byteData[2];
+    }
+
+    function addFlag(bool[2] memory flag) public returns (uint) {
+        return m_pairsOfFlags.push(flag);
+    }
+
+    function createMemoryArray(uint size) public pure returns (bytes memory) {
+        // Dynamic memory arrays are created using `new`:
+        uint[2][] memory arrayOfPairs = new uint[2][](size);
+
+        // Inline arrays are always statically-sized and if you only
+        // use literals, you have to provide at least one type.
+        arrayOfPairs[0] = [uint(1), 2];
+
+        // Create a dynamic byte array:
+        bytes memory b = new bytes(200);
+        for (uint i = 0; i < b.length; i++)
+            b[i] = byte(uint8(i));
+        return b;
+    }
+}
+
+```
+### Yapılar
+
+Aşağıdaki şekilde gösterildiği gibi, Solidity yeni bir türü `struct` biçiminde tanımlama imkanı sunar:
+
+```
+pragma solidity >=0.4.11 <0.6.0;
+
+contract CrowdFunding {
+    // Defines a new type with two fields.
+    struct Funder {
+        address addr;
+        uint amount;
+    }
+
+    struct Campaign {
+        address payable beneficiary;
+        uint fundingGoal;
+        uint numFunders;
+        uint amount;
+        mapping (uint => Funder) funders;
+    }
+
+    uint numCampaigns;
+    mapping (uint => Campaign) campaigns;
+
+    function newCampaign(address payable beneficiary, uint goal) public returns (uint campaignID) {
+        campaignID = numCampaigns++; // campaignID is return variable
+        // Creates new struct in memory and copies it to storage.
+        // We leave out the mapping type, because it is not valid in memory.
+        // If structs are copied (even from storage to storage), mapping types
+        // are always omitted, because they cannot be enumerated.
+        campaigns[campaignID] = Campaign(beneficiary, goal, 0, 0);
+    }
+
+    function contribute(uint campaignID) public payable {
+        Campaign storage c = campaigns[campaignID];
+        // Creates a new temporary memory struct, initialised with the given values
+        // and copies it over to storage.
+        // Note that you can also use Funder(msg.sender, msg.value) to initialise.
+        c.funders[c.numFunders++] = Funder({addr: msg.sender, amount: msg.value});
+        c.amount += msg.value;
+    }
+
+    function checkGoalReached(uint campaignID) public returns (bool reached) {
+        Campaign storage c = campaigns[campaignID];
+        if (c.amount < c.fundingGoal)
+            return false;
+        uint amount = c.amount;
+        c.amount = 0;
+        c.beneficiary.transfer(amount);
+        return true;
+    }
+}
+```
+Sözleşme, kitle fonlaması sözleşmesinin tam işlevselliğini sağlamaz, ancak yapıları anlamak için gereken temel kavramları içerir. Yapısal türler, eşleme ve dizilerin içinde kullanılabilir; eşleme ve diziler içerebilir.
+
+Bir yapının kendi türünde bir öğe içermesi mümkün değildir, ancak yapının kendisi bir eşleme öğesinin değer türü olabilir veya türünde dinamik olarak boyutlandırılmış bir dizi içerebilir. Yapının boyutunun sonlu olması gerektiğinden, bu kısıtlama gereklidir.
+
+Tüm fonksiyonlarda, bir yapı türünün veri konumu `storage` olan bir yerel değişkene nasıl atandığını not ediniz. Bu yapıyı kopyalamaz, ancak yalnızca bir referansı saklar, böylece yerel değişken üyelerine yapılan atamalar aslında duruma yazabilir.
+
+Tabii ki, `campaigns[campaignID].amount = 0` ifadesindeki gibi, yerel bir değişkene atamadan yapı üyelerine doğrudan erişebilirsiniz.
+
+## Eşleme Türleri
+
+Eşleme türlerini syntax ile `mapping(_KeyType => _ValueType)` şeklinde gösterebilirsiniz. `_KeyType` herhangi bir temel tür olabilir. Bu, yerleşik değer türlerinden herhangi biri artı `byte` ve `string` olabileceği anlamına gelir. Sözleşme türleri, numaralandırmalar, eşlemeler, yapılar ve bayt ve dizgiler dışında herhangi bir dizi türü gibi kullanıcı tanımlı veya karmaşık türlere izin verilmez. `_ValueType` eşleme dahil olmak üzere herhangi bir tür olabilir.
+
+Eşleme, her olası anahtarın var olacağı ve bayt temsilinin tümü sıfır olan bir türün varsayılan değeri olan bir değere eşlenecek şekilde başlatılan hash tabloları olarak düşünebilirsiniz. Benzerlik burada biter, anahtar veriler bir eşlemede depolanmaz, değere bakmak için sadece `keccak256` hash kullanılır.
+
+Bu nedenle, eşlemelerin ayarlanan bir anahtar veya değer için bir uzunluğu veya kavramı yoktur.
+
+Eşlemeler yalnızca bir veri `storage` konumuna sahip olabilir ve bu nedenle durum değişkenleri için, fonksiyonlardaki depolama referans türleri veya kütüphane işlevleri parametreler olarak kullanılır. Ancak bunlar, `public` durumdaki sözleşme fonksiyonları veya iade parametreleri olarak kullanılamazlar.
+
+Eşleme türündeki değişkenleri genel olarak işaretleyebilirsiniz ve Solidity sizin için bir alıcı oluşturur. `_KeyType`, alıcı için bir parametre haline gelir. `_ValueType` bir değer türü veya yapı ise, alıcı `_ValueType` değerini döndürür. `_ValueType` bir dizi veya eşleme ise, alıcıda her `_KeyType` için bir parametre tekrarlanır. Örneğin bir eşleme ile:
+
+```
+pragma solidity >=0.4.0 <0.6.0;
+
+contract MappingExample {
+    mapping(address => uint) public balances;
+
+    function update(uint newBalance) public {
+        balances[msg.sender] = newBalance;
+    }
+}
+
+contract MappingUser {
+    function f() public returns (uint) {
+        MappingExample m = new MappingExample();
+        m.update(100);
+        return m.balances(address(this));
+    }
+}
+
+```
+
+### [Not]()
+
+> Eşlemeler yinelenemez, ancak bunların üstüne bir veri yapısı uygulamak mümkündür. Bir örnek için, *Yinelenebilir Eşlemeye* bakın.
+
+## LValues İçeren Operatörler
+
+A bir LValue ise (yani bir değişken veya atanabilecek bir şey), aşağıdaki operatörler kısayol olarak kullanılabilir:
+
+`a + = e`, `a = a + e` değerine eşittir. İşleçler `- =`, `* =`, `/ =`,`% =`, `| =`,` & =` ve `^ =` buna göre tanımlanmıştır. `a ++` ve `a--`, `+ = 1 / a - = 1` değerlerine eşittir, ancak ifadenin kendisi hala önceki `a` değerine sahiptir. Benzer şekilde, `--a` ve `++ a`, `a` üzerinde ters etkiye sahiptir, ancak değişiklikten sonra orjinale geri döndürür.
+
+**Silmek**
+
+`delete a`, türün başlangıç değerini a olarak atar. Yani tamsayılar için `a = 0`'a eşdeğerdir, ancak aynı zamanda, sıfır değerine sahip dinamik bir dizi dizisi veya tüm değerlerini başlangıç değerlerine ayarlanan aynı uzunluktaki statik diziyi atadığı dizilerde de kullanılabilir. `delete a[x]`, dizinin x dizinindeki öğeyi siler ve diğer tüm öğeleri ve dizinin uzunluğunu el değmemiş halde bırakır. Bu, özellikle dizide bir boşluk bıraktığı anlamına gelir. Öğeleri kaldırmayı planlıyorsanız, `mapping` muhtemelen daha iyi bir seçimdir.
+
+Yapılar için `delete`, tüm üyelerin sıfırlanmasıyla bir yapı atanmasını sağlar. Başka bir deyişle, bir `delete` sonrası a'nın değeri a ile atama yapılmadan bildirilen ile aynıdır.
+
+`delete` , eşlemeler üzerinde hiçbir etkiye sahip değildir (eşlemelerin anahtarları isteğe bağlı olabileceği ve genellikle bilinmediği için). Bu nedenle, bir yapıyı silerseniz, eşleme olmayan tüm üyeleri sıfırlar ve eşleme olmadıkça üyelere tekrar girer. Ancak, ayrı ayrı tuşlar ve eşlenecekleri değerler silinebilir: `a` bir eşleme ise, `delete a[x]` x'te depolanan değeri siler.
+
+`delete a` işleminin gerçekten atama gibi davrandığını, yani a'da yeni bir nesneyi sakladığını not etmek önemlidir. Bu durum `a` referans değişken olduğunda da görülebilir: Önceden bahsettiği değeri değil, sadece kendini sıfırlar.
+
+```
+pragma solidity >=0.4.0 <0.6.0;
+
+contract DeleteExample {
+    uint data;
+    uint[] dataArray;
+
+    function f() public {
+        uint x = data;
+        delete x; // sets x to 0, does not affect data
+        delete data; // sets data to 0, does not affect x
+        uint[] storage y = dataArray;
+        delete dataArray; // this sets dataArray.length to zero, but as uint[] is a complex object, also
+        // y is affected which is an alias to the storage object
+        // On the other hand: "delete y" is not valid, as assignments to local variables
+        // referencing storage objects can only be made from existing storage objects.
+        assert(y.length == 0);
+    }
+}
+```
+## Temel Tipler Arasındaki Dönüşümler
+
+### Örtük Dönüşümler
+
+Bir operatör farklı türlere uygulanırsa, derleyici işlenenlerden birini diğerinin türüne örtük olarak dönüştürmeye çalışır (aynısı atamalar için de geçerlidir). Genel olarak, anlamsal olarak anlam ifade ediyorsa ve hiçbir bilgi kaybedilmezse, değer türleri arasında örtük bir dönüşüm mümkündür: `uint8`, `uint16` ve `int128`'den `int256`'ya dönüştürülebilir, ancak `int8`, `uint256`'ya dönüştürülemez (çünkü `uint256`, örn. -1'i tutamaz).
+
+Daha fazla ayrıntı için lütfen türlerle ilgili bölümlere bakın.
+
+### Açık Dönüşümler
+
+Derleyici örtük dönüştürmeye izin vermiyorsa, ancak ne yaptığınızı biliyorsanız, açık bir tür dönüştürmesi bazen mümkündür. Bunun size beklenmeyen bir davranış verebileceğini ve derleyicinin bazı güvenlik özelliklerini atlamanıza izin verdiğini unutmayın; bu nedenle, sonucun istediğiniz gibi olduğunu test ettiğinizden emin olun! Aşağıdaki örnekte negatif bir `int8`'i bir `uint`'e dönüştürüyoruz:
+
+```
+int8 y = -3;
+uint x = uint(y);
+```
+Bu kod snippet'inin sonunda, `x`, iki bitin 256 bitlik tamamlayıcı gösteriminde -3 olan `0xfffff..fd` (64 hex karakter) değerine sahip olacaktır.
+
+Bir tamsayı açıkça daha küçük bir türe dönüştürülürse, yüksek dereceli bitler kesilir:
+```
+uint32 a = 0x12345678;
+uint16 b = uint16(a); // b will be 0x5678 now
+```
+Bir tamsayı açıkça daha büyük bir türe dönüştürülürse, sol tarafa doldurulur (yani, üst mertebe sonuna). Dönüşümün sonucu, orijinal tam sayıya eşit olarak karşılaştırılır:
+
+```
+uint16 a = 0x1234;
+uint32 b = uint32(a); // b will be 0x00001234 now
+assert(a == b);
+```
+Sabit boyutlu bayt türleri, dönüşümler sırasında farklı davranır. Tek tek bayt dizileri olarak düşünülebilir ve daha küçük bir türe dönüştürmek diziyi keser:
+
+```
+bytes2 a = 0x1234;
+bytes1 b = bytes1(a); // b will be 0x12
+```
+Sabit boyutlu bir bayt türü açıkça daha büyük bir türe dönüştürülürse, sağ tarafa doldurulur. Bayt'a sabit bir dizinde erişmek, dönüşümden önce ve sonra aynı değere neden olur (dizin hala aralıktaysa):
+
+```
+bytes2 a = 0x1234;
+bytes4 b = bytes4(a); // b will be 0x12340000
+assert(a[0] == b[0]);
+assert(a[1] == b[1]);
+```
+
+Tamsayılar ve sabit boyutlu bayt dizileri, kesme ya da doldurma sırasında farklı davrandıklarından, tamsayılar ve sabit boyutlu bayt dizileri arasındaki açık dönüşümlere yalnızca her ikisinin de aynı boyuta sahip olması durumunda izin verilir. Tamsayılar ve farklı büyüklükteki sabit boyutlu bayt dizileri arasında dönüşüm yapmak istiyorsanız, istenen kesme ve doldurma kurallarını açık yapan ara dönüşümleri kullanmanız gerekir:
+
+```
+bytes2 a = 0x1234;
+uint32 b = uint16(a); // b will be 0x00001234
+uint32 c = uint32(bytes4(a)); // c will be 0x12340000
+uint8 d = uint8(uint16(a)); // d will be 0x34
+uint8 e = uint8(bytes1(a)); // e will be 0x12
+```
+### Değişmezler ve Temel Türler Arasındaki Dönüşümler
+
+#### Tamsayı Türleri
+Ondalık ve onaltılık sayı değişmezleri örtük olarak, kesmeden gösterebilecek kadar büyük olan herhangi bir tam sayı türüne dönüştürülebilir:
+```
+uint8 a = 12; // fine
+uint32 b = 1234; // fine
+uint16 c = 0x123456; // fails, since it would have to truncate to 0x3456
+```
+#### Sabit Boyutlu Bayt Dizileri
+
+Ondalık sayı değişmezleri örtük olarak sabit boyutlu bayt dizilerine dönüştürülemez. Onaltılık sayı değişmezleri olabilir, ancak yalnızca onaltılık basamak sayısı bayt türünün boyutuna tam olarak uyarsa bu durum kabul edilebilir. İstisna olarak, sıfır değerine sahip hem ondalık hem de onaltılık değişmezler herhangi bir sabit boyutlu bayt türüne dönüştürülebilir:
+
+```
+bytes2 a = 54321; // not allowed
+bytes2 b = 0x12; // not allowed
+bytes2 c = 0x123; // not allowed
+bytes2 d = 0x1234; // fine
+bytes2 e = 0x0012; // fine
+bytes4 f = 0; // fine
+bytes4 g = 0x0; // fine
+```
+
+String değişmezleri ve onaltılı dize değişmezleri, karakter sayısı bayt türünün boyutuyla eşleşiyorsa, örtük olarak sabit boyutlu bayt dizilerine dönüştürülebilir:
+
+```
+bytes2 a = hex"1234"; // fine
+bytes2 b = "xy"; // fine
+bytes2 c = hex"12"; // not allowed
+bytes2 d = hex"123"; // not allowed
+bytes2 e = "x"; // not allowed
+bytes2 f = "xyz"; // not allowed
+```
+Adresler
+
+Açıklandığı üzere, sağlama toplamı testini geçen doğru boyutta hex değişmezleri adres türündedir. Başka hiçbir değişmez, dolaylı olarak adres türüne dönüştürülemez.
+
+`address payable` ile sonuçlanması için `bytes20` veya herhangi bir tamsayı türündeki açık dönüşümler uygulanmalıdır.
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+v
+```
+```
+v
 
 
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
 
 
 

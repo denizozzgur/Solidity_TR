@@ -3025,10 +3025,102 @@ Sözleşmenin oluşturma kodunu içeren memory bayt dizisi. Bu, satır içi derl
 
 Sözleşmenin çalışma zamanı kodunu içeren bellek bayt dizisi. Bu, genellikle `C`'nin kurucusu tarafından dağıtılan koddur. `C`, satır içi derleme kullanan bir kurucuya sahipse, bu gerçekte dağıtılan bayt kodundan farklı olabilir. Ayrıca, kitaplıkların düzenli aramalara karşı korunmak için konuşlandırma sırasında çalışma zamanı bayt kodunu değiştirdiğini unutmayın. Bu özellik için `.creationCode` ile aynı kısıtlamalar geçerlidir.
 
+
+
+# Güvenlik Hususları
+
+Beklendiği gibi çalışan bir yazılım oluşturmak genellikle oldukça kolay olmakla birlikte, herkesin yazılımı beklendiği şekilde kullanıp kullanmayacağını tahmin etmek çok zordur.
+
+Solidity dili için, bu durum daha da önemlidir çünkü tokenlerle işlem yapmak için akıllı sözleşmeleri yazabiliyor; çok değerli varlıkları bu dille yönetebiliyoruz. Ayrıca, akıllı bir sözleşmenin her uygulaması halka açık olarak geliştirildiğinden kaynak kodu çoğu zaman herkesin erişimine açık durumdadır.
+
+Elbette her zaman ne kadar risk altında olduğunu göz önünde bulundurmanız gerekir: Akıllı bir sözleşmeyi, halka açık bir web servisiyle (ve böylece kötü niyetli aktörlere) ve hatta belki de açık kaynak kodu ile karşılaştırabilirsiniz. Alışveriş listenizi yalnızca bu web hizmetinde saklarsanız, çok fazla dikkat etmeniz gerekmeyebilir, ancak banka hesabınızı bu web hizmetini kullanarak yönetiyorsanız, daha dikkatli olmalısınız.
+
+Bu bölümde bazı tuzaklar ve genel güvenlik önerileri listelenecek ancak elbette asla tamamlanamayacaktır. Ayrıca, akıllı sözleşme kodunuz hatasız olsa bile, derleyicide veya platformda bir hata olabileceğini unutmayın. Derleyicinin halka açık bilinen güvenlikle ilgili bazı hatalarının bir listesi, aynı zamanda makineyle okunabilen bilinen hatalar listesinde bulunabilir. Solidity derleyicisinin kod oluşturucusunu kapsayan bir hata ödül programı olduğunu unutmayın.
+
+Her zaman olduğu gibi, bu bölümü genişletmemize lütfen yardımcı olun (özellikle, bazı örnekler verebilirseniz harika olur)!
+
+## Tuzaklar
+
+### Özel Bilgi ve Rastgelelik
+
+Akıllı bir sözleşmede kullandığınız her şey herkes tarafından görülebilir, hatta özel olarak işaretlenmiş yerel değişkenler ve `private` durum değişkenleri bile.
+
+Madencilerin hile yapmasını istemiyorsanız, akıllı sözleşmelerde rastgele sayılar kullanmak oldukça zordur.
+
+### Yeniden Giriş
+
+Bir sözleşmeden (A) başka bir sözleşmeyle (B) herhangi bir etkileşim ve herhangi bir Ether devresinin kontrolü bu sözleşmeye (B) devretmesi. Bu, B'nin bu etkileşim tamamlanmadan önce A'ya geri dönmesini sağlar. Bir örnek vermek gerekirse, aşağıdaki kod işte bu hatayı içeriyor (bu yalnızca bir snippet ve tam bir sözleşme değil):
+
 ```
+pragma solidity >=0.4.0 <0.6.0;
+
+// THIS CONTRACT CONTAINS A BUG - DO NOT USE
+contract Fund {
+    /// Mapping of ether shares of the contract.
+    mapping(address => uint) shares;
+    /// Withdraw your share.
+    function withdraw() public {
+        if (msg.sender.send(shares[msg.sender]))
+            shares[msg.sender] = 0;
+    }
+}
 ```
+Sorun, `send` fonksiyonunun bir parçası olarak sınırlı gaz nedeniyle çok ciddi değil, ancak yine de bir zayıflık ortaya koyuyor: Ether transferi her zaman kod yürütmeyi içerebilir, böylece alıcı bir `withdraw` sözleşmesi olabilir. Bu, birden fazla para iadesi almasını ve sözleşmedeki tüm Etherleri geri almasını sağlar. Özellikle, aşağıdaki sözleşme, bir saldırganın varsayılan olarak tüm kalan gazı ileten çağrıyı kullandığı için birden çok kez para iadesine sebep olacaktır:
+
 ```
+pragma solidity >=0.4.0 <0.6.0;
+
+// THIS CONTRACT CONTAINS A BUG - DO NOT USE
+contract Fund {
+    /// Mapping of ether shares of the contract.
+    mapping(address => uint) shares;
+    /// Withdraw your share.
+    function withdraw() public {
+        (bool success,) = msg.sender.call.value(shares[msg.sender])("");
+        if (success)
+            shares[msg.sender] = 0;
+    }
+}
 ```
+Tekrar giriş yapmamak için, aşağıda daha detaylı olarak açıklandığı üzere *Kontroller-Etkiler-Etkileşimler* desenini kullanabilirsiniz:
+
+```
+pragma solidity >=0.4.11 <0.6.0;
+
+contract Fund {
+    /// Mapping of ether shares of the contract.
+    mapping(address => uint) shares;
+    /// Withdraw your share.
+    function withdraw() public {
+        uint share = shares[msg.sender];
+        shares[msg.sender] = 0;
+        msg.sender.transfer(share);
+    }
+}
+```
+
+Yeniden girişin sadece Ether transferinin değil, başka herhangi bir sözleşmedeki herhangi bir fonksiyon çağrısının bir etkisi olduğunu unutmayın. Ayrıca, çok sözleşmeli durumları da hesaba katmanız gerekir. Bir sözleşme, güvendiğiniz bir başka sözleşmenin durumunu değiştirebilir.
+
+### Gaz Sınırı ve Döngüler
+
+Sabit sayıda yinelemeye sahip olmayan döngüler, örneğin, depolama değerlerine bağlı döngüler, dikkatli bir şekilde kullanılmalıdır: Blok gaz sınırı nedeniyle, işlemler yalnızca belirli miktarda gaz tüketebilir. Açıkça veya sadece normal çalışma nedeniyle, bir döngüdeki yineleme sayısı, kontratın belirli bir noktada durmasına neden olabilecek blok gaz sınırının ötesine geçebilir. Bu, yalnızca blockchain'den veri okumak için yürütülen `view` fonksiyonları için geçerli bir durum olmayabilir. Yine de, bu tür fonksiyonlar zincir içi işlemlerin bir parçası olarak diğer sözleşmelerce çağrılabilir ve bunları durdurur. Lütfen bu tür durumları sözleşmelerinizin belgelerinde açıkça belirtiniz.
+
+### Ether Gönderme ve Alma
+
+Ne kontratlar ne de “dış hesaplar” şu anda birinin Ether göndermesini engelleyememektedir. Sözleşmeler düzenli transferlere tepki verebilir ve reddedebilir, ancak bir mesaj çağrısı oluşturmadan Ether'ı hareket ettirmenin yolları vardır. Bu yollardan biri, sözleşme adresini basitçe “mayınlamak” ve ikinci yol, `selfdestruct(x)` fonksiyonunu kullanmaktır.
+
+Bir sözleşme Ether alırsa (bir işlev çağrılmadan), fallback fonksiyonu yürütülür. Bir fallback fonksiyonuna sahip değilse, Ether (bir istisna atarak) reddedilir. Fallback fonksiyonunun yerine getirilmesi sırasında, sözleşme sadece kendisine verilen “gaz harcına” (2300 gaz) dayanabilir. Bu maaş, depolamayı değiştirmek için yeterli değildir (bunun için verilenleri almayın, maaş gelecekteki sabit çatallarla değişebilir). Sözleşmenizin bu şekilde Ether alabildiğinden emin olmak için, fallback fonksiyonunun gaz gereksinimlerini kontrol edin(örneğin Remix derleyicisi için bu bilgi "detaylar" bölümünde bulunur).
+
+`Addr.call.value (x) ("")` kullanarak alım sözleşmesine daha fazla gaz iletmenin bir yolu vardır. Bu aslında `addr.transfer (x)` ile aynıdır, sadece kalan tüm gazı iletir ve alıcının daha pahalı işlemler yapmasını sağlar (ve hatayı otomatik olarak yaymak yerine bir hata kodu verir). Bu, gönderen sözleşmeye geri arama veya aklınıza gelmeyen diğer durum değişikliklerini içerebilir. Böylece dürüst kullanıcılar için değil aynı zamanda kötü niyetli oyuncular için büyük esneklik sağlar.
+
+`Address.transfer` kullanarak Ether'ı göndermek istiyorsanız, dikkat edilmesi gereken bazı ayrıntılar var:
+
++ Alıcı bir sözleşme ise, fallback fonksiyonunun yürütülmesine neden olur ve o da gönderen sözleşmeyi geri çağırabilir.
+
++ Ether'in gönderilmesi, çağrı derinliği 1024'ten fazla olduğu için başarısız olabilir. Arayan, çağrı derinliğini tamamen kontrol ettiğinden, aktarımı başarısız olmaya zorlayabilir; bu olasılığı göz önünde bulundurun veya gönder seçeneğini kullanın ve her zaman iade değerini kontrol ettiğinizden emin olun. En iyi seçenek olarak, sözleşmenizi alıcının Ether'i geri çekebileceği bir kalıp kullanarak yazın.
+
+Ether'in gönderilmesi de başarısız olabilir, çünkü alıcı sözleşmesinin yürütülmesi ayrılan miktardan daha fazla gaz gerektirir (açıkça kullanılması gereken, `require`, `assert`, `revert`, `throw` çok pahalı olduğu için) - “gazın bitmesi” (OOG ). `Transfer`veya `send` fonksiyonu gönderirseniz, bu, alıcının gönderim sözleşmesindeki ilerlemeyi engellemesi için bir yol sağlayabilir. Yine, buradaki en iyi uygulama, "send" deseni yerine "withdraw" deseni kullanmaktır.
+
 ```
 ```
 ```

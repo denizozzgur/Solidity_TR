@@ -3119,13 +3119,89 @@ Bir sözleşme Ether alırsa (bir işlev çağrılmadan), fallback fonksiyonu y�
 
 + Ether'in gönderilmesi, çağrı derinliği 1024'ten fazla olduğu için başarısız olabilir. Arayan, çağrı derinliğini tamamen kontrol ettiğinden, aktarımı başarısız olmaya zorlayabilir; bu olasılığı göz önünde bulundurun veya gönder seçeneğini kullanın ve her zaman iade değerini kontrol ettiğinizden emin olun. En iyi seçenek olarak, sözleşmenizi alıcının Ether'i geri çekebileceği bir kalıp kullanarak yazın.
 
-Ether'in gönderilmesi de başarısız olabilir, çünkü alıcı sözleşmesinin yürütülmesi ayrılan miktardan daha fazla gaz gerektirir (açıkça kullanılması gereken, `require`, `assert`, `revert`, `throw` çok pahalı olduğu için) - “gazın bitmesi” (OOG ). `Transfer`veya `send` fonksiyonu gönderirseniz, bu, alıcının gönderim sözleşmesindeki ilerlemeyi engellemesi için bir yol sağlayabilir. Yine, buradaki en iyi uygulama, "send" deseni yerine "withdraw" deseni kullanmaktır.
+Ether'in gönderilmesi de başarısız olabilir, çünkü alıcı sözleşmesinin yürütülmesi ayrılan miktardan daha fazla gaz gerektirir (açıkça kullanılması gereken, `require`, `assert`, `revert`, `throw` çok pahalı olduğu için) - “gazın bitmesi” (OOG ). `Transfer`veya `send` fonksiyonu gönderirseniz, bu, alıcının gönderim sözleşmesindeki ilerlemeyi engellemesi için bir yol sağlayabilir. Yine, buradaki en iyi uygulama, "send" deseni yerine "withdraw" deseni tercih etmektir.
+
+### CallStack Derinliği
+
+Harici işlev çağrıları, maksimum 1024 çağrı kümesini aştıkları için herhangi bir zamanda başarısız olabilirler. Bu gibi durumlarda, Solidity bir sıradışı durum bildirir. Kötü niyetli oyuncular kontratınızla etkileşime girmeden önce arama yığınını yüksek bir değere zorlayabilirler.
+
+Çağrı yığını tükenmişse `.send ()` 'in sıradışılık bildirmediğini ancak bu durumda `false` döndürdüğünü unutmayın. Düşük seviyeli işlevler `.call ()`, `.callcode ()`, `.delegatecall ()` ve `.staticcall ()` yine aynı şekilde davranacaktır.
+
+### tx.origin
+
+Asla yetkilendirme için tx.origin kullanmayın. Diyelim ki böyle bir cüzdan sözleşmeniz var:
 
 ```
+pragma solidity ^0.5.0;
+
+// THIS CONTRACT CONTAINS A BUG - DO NOT USE
+contract TxUserWallet {
+    address owner;
+
+    constructor() public {
+        owner = msg.sender;
+    }
+
+    function transferTo(address payable dest, uint amount) public {
+        require(tx.origin == owner);
+        dest.transfer(amount);
+    }
+}
 ```
+Şimdi birilerinin bu saldırı cüzdanının adresine eter yollamak için sizi kandırdığı durumu görelim:
 ```
+pragma solidity ^0.5.0;
+
+interface TxUserWallet {
+    function transferTo(address payable dest, uint amount) external;
+}
+
+contract TxAttackWallet {
+    address payable owner;
+
+    constructor() public {
+        owner = msg.sender;
+    }
+
+    function() external {
+        TxUserWallet(msg.sender).transferTo(owner, msg.sender.balance);
+    }
+}
 ```
+Cüzdanınız yetkilendirme için `msg.sender`’ı kontrol etmiş olsaydı, `owner` adresi yerine saldırı cüzdanının adresini alırdı. Ancak, tx.origin'i kontrol ederek, işlemin başlatan asıl adresini alır, ki bu hala `owner` adresidir. Saldırı cüzdanı bu sayede anında tüm paranızı alabilir.
+
+### İkinin Tamamlayıcısı / Akışı / Taşması
+
+Birçok programlama dilinde olduğu gibi, Solidity’nin tamsayı türleri aslında tamsayı değildir. Değerler küçük olduğunda tam sayılara benzerler, ancak sayılar daha büyükse farklı davranırlar. Örneğin, bu ifade doğrudur: `uint8 (255) + uint8 (1) == 0`. Bu duruma *taşma* denir. Değişken veri türünün aralığının dışındaki bir sayıyı (veya veri parçasını) saklamak için sabit bir boyut değişkeni gerektiren bir işlem gerçekleştirildiğinde gerçekleşir. Bir *akış* ise tersi işlemlerde gerçekleşir: `uint8 (0) - uint8 (1) == 255`.
+
+Genel olarak, karşılaşılablecek özel durumları içeren, iki değerin tamamlayıcı olması için detaylı açıklamaları da okumanız gerekir.
+
+`require` kullanmaya çalışın, girdilerin boyutunu makul bir aralıkta sınırlayın ve olası taşmaları bulmak için SMT denetleyicisini kullanın ya da tüm taşmaların geri dönmesine neden olmak istiyorsanız, SafeMath gibi bir kitaplık kullanın.
+
+`require((balanceOf [_to] + _value)> = balanceOf [_to])` gibi kodlar, değerlerin beklediğiniz gibi olup olmadığını kontrol etmenize yardımcı olabilir.
+
+### Küçük detaylar
+
+Tam 32 baytı işgal etmeyen türler “kirli yüksek dereceli bitler” içerebilir. `Msg.data`'ya erişirseniz bu durum özellikle önemlidir - çünkü bir hassasiyet riski oluşturabilir: `f(uint8 x)` işlevini çağıran işlemleri, `0xff000001` ve `0x00000001` ham bayt argümanıyla oluşturabilirsiniz. Her ikisi de sözleşmeye verilir ve her ikisi de x düşünüldüğünde 1 sayısı gibi görünecektir, ancak `msg.data` farklı olacaktır, bu nedenle bir şey için `keccak256(msg.data`) kullanırsanız, farklı sonuçlar alırsınız.
+
+## Öneriler
+
+### Uyarıları Ciddiye Alın
+
+Derleyici sizi bir şey hakkında uyarırsa, onu değiştirmeniz kodunuz için iyi olacaktır. Bu uyarının güvenlik sorununa neden olacağını düşünmeseniz bile, altına gömülmüş kritik bir soruna neden olabilir. Derleyicinin verdiği uyarılar genellikle kodunuzdaki küçük değişikliklerle susturulabilir.
+
+Yeni tanıtılan tüm uyarılardan haberdar olmak için her zaman derleyicinin en son sürümünü kullanın.
+
+### Ether Miktarını Sınırlayın
+
+Akıllı bir sözleşmede saklanabilecek Ether (veya diğer belirteçler) miktarını sınırlandırın. Kaynak kodunuzda, derleyicide veya platformda bir hata varsa, bu fonlar kaybolabilir. Kaybınızı sınırlamak istiyorsanız, Ether miktarını sınırlandırın.
+
+### Küçük ve Modüler Tutun
+
+Sözleşmelerinizi küçük ve kolayca anlaşılabilir tutun. Diğer sözleşmelerdeki veya kütüphanelerdeki ilgisiz işlevsellikten kurtulun. Elbette kaynak kod kalitesi ile ilgili genel tavsiyeler geçerlidir: Yerel değişkenlerin miktarını, işlevlerin uzunluğunu vb. Sınırlayın. İşlevlerinizi belgeleyin, böylece başkalarının niyetinin ne olduğunu ve kodun yaptığından farklı olup olmadığını görebilirsiniz.
+
 ```
+
 ```
 ```
 ```

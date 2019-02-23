@@ -6431,7 +6431,7 @@ $ cmake -DLLL = On ..
 $ cmake - build.
 
 ```
-### [Warning]()
+### [Uyarı]()
 
 > LLL kod tabanı kullanımdan kaldırılmıştır ve ileride Solidity havuzundan da kaldırılacaktır.
 

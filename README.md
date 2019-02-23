@@ -3678,8 +3678,118 @@ Aşağıdaki alt bölümler, bir örnek yoluyla formatı açıklar. Elbette, aç
 `CompilerError`: Derleyici yığınının geçersiz kullanımı - bu bir sorun olarak bildirilmelidir.
 `FatalError`: Ölümcül hata doğru işlenmedi - bu bir sorun olarak bildirilmelidir.
 `Warning`: Derlemeyi durdurmayan, ancak mümkünse ele alınması gereken bir uyarı.
+
+
+# Sözleşme Meta Verileri
+
+Solidity derleyicisi, geçerli sözleşme hakkında bilgi içeren sözleşme meta verileri olan bir JSON dosyası otomatik olarak oluşturur. Bu dosyayı derleyici sürümünü, kullanılan kaynakları, ABI ve NatSpec belgelerini sözleşmeyle daha güvenli bir şekilde etkileşime sokmak ve kaynak kodunu doğrulamak için kullanabilirsiniz.
+
+Derleyici, her bir sözleşmenin bayt kodunun sonuna (ayrıntılar için aşağıya bakınız) meta veri dosyasının bir sürüsünü ekler, böylece dosyayı merkezi bir veri sağlayıcıya başvurmak zorunda kalmadan kimliği doğrulanmış bir şekilde alabilirsiniz.
+
+Başkalarının erişebilmesi için meta veri dosyasını Swarm'a (veya başka bir hizmete) yayınlamanız gerekir. `ContractName_meta.json` adlı bir dosya üreten `solc --metadata` komutunu kullanarak bu dosyayı yaratırsınız. Kodunuz Swarm referansları içerir, bu nedenle tüm kaynak dosyalarını ve meta veri dosyasını yüklemeniz gerekir.
+
+Meta veri dosyası aşağıdaki biçime sahiptir. Aşağıdaki örnek insan tarafından okunabilir bir şekilde sunulmaktadır. Düzgün biçimlendirilmiş meta veriler tırnakları doğru kullanmalı, boşlukları en aza indirmeli ve benzersiz bir biçimlendirmeye ulaşmak için tüm nesnelerin anahtarlarını sıralamalıdır. Yorumlara izin verilmez ve burada sadece açıklayıcı amaçlar için kullanılır.
 ```
+{
+  // Required: The version of the metadata format
+  version: "1",
+  // Required: Source code language, basically selects a "sub-version"
+  // of the specification
+  language: "Solidity",
+  // Required: Details about the compiler, contents are specific
+  // to the language.
+  compiler: {
+    // Required for Solidity: Version of the compiler
+    version: "0.4.6+commit.2dabbdf0.Emscripten.clang",
+    // Optional: Hash of the compiler binary which produced this output
+    keccak256: "0x123..."
+  },
+  // Required: Compilation source files/source units, keys are file names
+  sources:
+  {
+    "myFile.sol": {
+      // Required: keccak256 hash of the source file
+      "keccak256": "0x123...",
+      // Required (unless "content" is used, see below): Sorted URL(s)
+      // to the source file, protocol is more or less arbitrary, but a
+      // Swarm URL is recommended
+      "urls": [ "bzzr://56ab..." ]
+    },
+    "mortal": {
+      // Required: keccak256 hash of the source file
+      "keccak256": "0x234...",
+      // Required (unless "url" is used): literal contents of the source file
+      "content": "contract mortal is owned { function kill() { if (msg.sender == owner) selfdestruct(owner); } }"
+    }
+  },
+  // Required: Compiler settings
+  settings:
+  {
+    // Required for Solidity: Sorted list of remappings
+    remappings: [ ":g/dir" ],
+    // Optional: Optimizer settings (enabled defaults to false)
+    optimizer: {
+      enabled: true,
+      runs: 500
+    },
+    // Required for Solidity: File and name of the contract or library this
+    // metadata is created for.
+    compilationTarget: {
+      "myFile.sol": "MyContract"
+    },
+    // Required for Solidity: Addresses for libraries used
+    libraries: {
+      "MyLib": "0x123123..."
+    }
+  },
+  // Required: Generated information about the contract.
+  output:
+  {
+    // Required: ABI definition of the contract
+    abi: [ ... ],
+    // Required: NatSpec user documentation of the contract
+    userdoc: [ ... ],
+    // Required: NatSpec developer documentation of the contract
+    devdoc: [ ... ],
+  }
+}
 ```
+### [Uyarı]()
+> Sonuçta ortaya çıkan sözleşmenin bayt kodu meta veri hashi içerdiğinden, meta verilerde yapılan herhangi bir değişiklik, bayt kodunun değişmesine neden olur. Bu bir dosya adı veya yolundaki değişiklikleri içerir ve meta veriler kullanılan tüm kaynakların bir karmasını içerdiğinden, tek bir beyaz boşluk değişikliği farklı meta verilerde ve farklı bytecode'larda sonuç verebilir.
+
+### [Not]()
+
+> Yukarıdaki ABI tanımının sabit bir sıraya sahip olmadığını unutmayın. Derleyici sürümleriyle değişebilir.
+
+## Byte Kodunda Meta Veri Hash'in Kodlanması
+
+Gelecekte meta veri dosyasını almanın başka yollarını da destekleyebileceğimizden, `{"bzzr0": <Swarm hash>}` eşlemesi `CBOR` kodlu olarak depolanır. Bu kodlamanın başlangıcını bulmak kolay olmadığından, uzunluğu iki baytlık bir büyük kodlayıcı koduna eklenir. Solidity derleyicisinin geçerli sürümü böylece dağıtılan bayt kodunun sonuna aşağıdakini ekler:
+
+```
+0xa1 0x65 'b' 'z' 'z' 'r' '0' 0x58 0x20 <32 bayt sürüsü karma> 0x00 0x29
+```
+Böylece verileri almak için, konuşlandırılan bayt kodunun sonu bu modelle eşleşecek şekilde kontrol edilebilir ve dosyayı almak için Swarm özeti kullanılır.
+
+### [Not]()
+
+> Derleyici şu anda meta verinin "sürüsü sürüm 0" değerini kullanıyor, ancak gelecekte değişebilir, bu nedenle `0xa1 0x65 'b' 'z' 'z' 'r' '0'` ile başlamak için bu diziye güvenmeyin . Bu CBOR yapısına ek veri de ekleyebiliriz, bu nedenle en iyi seçenek uygun bir CBOR ayrıştırıcı kullanmaktır.
+
+## Otomatik Arayüz Üretimi ve NatSpec Kullanımı
+
+Meta veriler şu şekilde kullanılır: Bir sözleşmeyle etkileşimde bulunmak isteyen bir bileşen (örneğin, Mist veya herhangi bir cüzdan), sözleşmenin kodunu alır, daha sonra alınan bir dosyanın Swarm'dan alır. Bu dosya JSON ile kodlanmış, yukarıdaki gibi bir yapıya dönüştürülmüş.
+
+Bileşen daha sonra ABI'yi sözleşme için basit bir kullanıcı arayüzü oluşturmak için kullanabilir.
+
+Ayrıca cüzdan, sözleşmeyle etkileşime girdiklerinde kullanıcıya, işlem imzası için izin istemekle birlikte kullanıcıya bir onay mesajı görüntülemek için 'NatSpec' kullanıcı belgelerini kullanabilir.
+
+Ethereum Natural Specification (NatSpec) hakkında ek bilgi [burada](https://github.com/ethereum/wiki/wiki/Ethereum-Natural-Specification-Format) bulunabilir.
+
+## Kaynak Kod Doğrulama Kullanımı
+
+Derlemeyi doğrulamak için, kaynaklar meta veri dosyasındaki bağlantı yoluyla Swarm'dan alınabilir. Doğru sürümün derleyicisi (“resmi” derleyicilerin bir parçası olarak kontrol edilir) belirtilen girdilerle bu girdiye çağrılır. Elde edilen bytecode, yaratma işleminin veya 'CREATE' opcode verilerinin verileriyle karşılaştırılır. Bu, hash bayt kodunun bir parçası olduğundan meta verileri otomatik olarak doğrular. Aşırı veri, arayüze göre çözülmesi ve kullanıcıya sunulması gereken yapıcı girdi verilerine karşılık gelir.
+
+
+
 ```
 ```
 ```

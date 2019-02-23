@@ -3327,7 +3327,7 @@ Akıllı sözleşme sistemleri için bir takım görsel çıktılar ve sözleşm
 + [EVM Lab](https://github.com/ethereum/evmlab/)
 EVM ile etkileşime girmek için zengin takım paketi. Bir VM, Etherchain API ve gaz maliyet göstergeli bir izleyici içerir.
 
-### Not
+### [Not]()
 
 > Derleme işleminde değişken isimleri, yorumlar ve kaynak kodu formatlama gibi bilgiler kaybedilir ve orijinal kaynak kodunun tamamen geri kazanılması mümkün değildir. Özgün kaynak kodunu veya kod yapısını görüntülemek için akıllı sözleşmelerin açılması mümkün olmayabilir.
 
@@ -3338,19 +3338,346 @@ EVM ile etkileşime girmek için zengin takım paketi. Bir VM, Etherchain API ve
 + [ANTLR 4 için Solidity Syntax](https://github.com/federicobond/solidity-antlr4)
   ANTLR 4 ayrıştırıcı jeneratör için Solidity gramer
   
+# Derleyici Kullanımı
+
+## Komut Satırı Derleyicisini Kullanma
+
+### [Not]()
+
+> Komut satırı modunda kullanılsa bile bu bölüm `solcjs` için geçerli değildir.
+
+Solidity deposunun inşa hedeflerinden biri `solc`, solidity komut satırı derleyicisidir. `solc --help` kullanımı, tüm olası seçeneklerin açıklamasını sağlar. Derleyici, basit ikili dosyalardan ve montajdan soyut bir sözdizimi ağacı (ayrıştırma ağacı) üzerinden gaz kullanımı tahminlerine kadar çeşitli çıktılar üretebilir. Yalnızca tek bir dosyayı derlemek istiyorsanız, dosyayı `solc --bin sourceFile.sol` olarak çalıştırın ve ikili dosyayı yazdırın. Solc'un daha gelişmiş çıktı değişkenlerinden bazılarını elde etmek istiyorsanız, `solc -o outputDirectory --bin --ast --asm sourceFile.sol` kullanarak dosyaları ayırmak için her şeyi çıkarmasını söylemek daha iyidir.
+
+Sözleşmenizi yayınlamadan önce, `solc --optimize --bin sourceFile.sol` kullanarak derlerken en iyi duruma getiriciyi etkinleştirin. Varsayılan olarak, bu iyileştirici, sözleşmenin ömrü boyunca 200 kez çağrıldığı varsayılarak sözleşmeyi optimize eder. İlk sözleşme dağıtımının daha ucuz olmasını ve daha sonraki fonksiyon işlemlerinin daha pahalı olmasını istiyorsanız, `--optimize-running = 1` olarak ayarlayın. Çok fazla fonksiyon çalıştırıyorsanız ve daha yüksek dağıtım maliyeti ve çıktı boyutunu umursamıyorsanız, `--optimize-running`'ları yüksek bir sayıya ayarlayın.
+
+Komut satırı derleyicisi, içe aktarılan dosyaları dosya sisteminden otomatik olarak okuyacaktır, ancak `prefix = path`'i kullanarak aşağıdaki şekilde yol yönlendirmeleri sağlamak da mümkündür:
   
-  
+```
+solc github.com/ethereum/dapp-bin/=/usr/local/lib/dapp-bin/ file.sol
+
+```
+Bu esasen derleyiciye `github.com/ethereum/dapp-bin/ ile / usr / local / lib / dapp-bin` altında başlayan herhangi bir şeyi aramasını söyler. `solc`, yeniden hedeflenen hedeflerin dışında ve açıkça belirtilen kaynak dosyalarının bulunduğu dizinlerin dışında kalan dosya sisteminden dosya okumaz; bu nedenle `"/ etc / passwd"` komutunu içe aktarır; Yalnızca `/ = /` remapping olarak eklerseniz çalışın.
+
+Boş bir remapping öneki kullanımına izin verilmez.
+
+Remapping nedeniyle birden fazla eşleşme varsa, en uzun ortak öneki olan bir tanesi seçilir.
+
+Güvenlik nedeniyle, derleyicinin hangi dizinlere erişebileceği konusunda kısıtlamalar vardır. Komut satırında belirtilen kaynak dosyalarının yolları (ve bunların alt dizinleri) ve yeniden yapılanmalarla tanımlanan yolların içe aktarım ifadelerine izin verilir, ancak diğer her şey reddedilir. Ek yollara (ve bunların alt dizinlerine) izin verilen `--allow-paths / sample / path, / another / sample / path` anahtarı aracılığıyla ulaşılır.
+
+Sözleşmeleriniz kitaplık kullanıyorsa, bayt kodunun `__ $ 53aea86b7d70b31448b230b20ae141a537 $ __` biçimindeki alt dizeleri içerdiğini fark edeceksiniz. Bunlar gerçek kütüphane adreslerinin yer tutucularıdır. Yer tutucu, tam nitelikli kütüphane adındaki `keccak256` karmasının onaltılı kodlamasının 34 karakterlik bir önekidir. Bayt kodu dosyası ayrıca yer tutucuların hangi kitaplıkları temsil ettiğini belirlemeye yardımcı olmak için sonunda `// <placeholder> -> <fq library name>` biçiminde satırlar içerecektir. Tam nitelikli kitaplık adının kaynak dosyasının ve kitaplık adının ayrıldığı yol olduğuna dikkat edin. `Solc`'u bir `linker` olarak kullanabilirsiniz, yani kütüphane adreslerini sizin için bu noktalara yerleştirir:
+
+`--Libraries "file.sol: Math: 0x1234567890123456789012345678901234567890 file.sol: Heap: 0xabCD567890123456789012345678901234567890"` komutunu kullanarak her kütüphanenize bir adres sağlayacabilir veya dosyalarınızın saklanması için bir konum sağlayabilirsiniz. `--libraries fileName` komutunu kullanarak `solc`ü çalıştırın.
+
+Solc - link seçeneğiyle çağrılırsa, tüm girdi dosyaları yukarıda verilen `__ $ 53aea86b7d70b31448b230b20ae141a537 $ __- ` biçiminde bağlantısız ikili dosyalar (hex-kodlanmış) olarak yorumlanır ve girdiler yerinde (eğer girdiler `stdin`'den okunursa) , `stdout`'a yazılmıştır). Bu durumda - kiralamalar hariç tüm seçenekler (-o dahil) yoksayılır.
+
+Solc, `--standard-json` seçeneğiyle çağrılırsa, standart girişte bir JSON girişi (aşağıda açıklandığı gibi) bekleyecek ve standart çıkışta bir JSON çıkışı döndürecektir. Bu, daha karmaşık ve özellikle de otomatikleştirilmiş kullanımlar için önerilen arayüzdür.
+
+### [Not]()
+
+> Kütüphane yer tutucusu, hash yerine kütüphanenin kendisinin tam adıdır. Bu format hala `solc - link` tarafından desteklensede, derleyici artık çıktı vermeyecektir. Bu değişiklik, kütüphaneler arasında bir çarpışma olasılığını azaltmak için yapılmıştır, çünkü tam nitelikli kütüphanenin adının yalnızca ilk 36 karakteri kullanılabilmiştir.
+
+## EVM Sürümünü Hedefe Ayarlama
+
+Sözleşme kodunuzu derlerken, belirli özelliklerden veya davranışlardan kaçınmak için derlenecek Ethereum sanal makine versiyonunu belirleyebilirsiniz.
+
+### [Uyarı]()
+
+>Yanlış EVM sürümünün derlenmesi yanlış, garip ve başarısız davranışlarla sonuçlanabilir. Lütfen özel bir zincir kullanıyorsanız, eşleşen EVM sürümlerini kullandığınızdan emin olun.
+
+Komut satırında EVM sürümünü aşağıdaki gibi seçebilirsiniz:
+```
+solc - evm-version <SÜRÜM> sözleşme.sol
+```
+Standart JSON arayüzünde, `settings` alanındaki `evmVersion` anahtarını kullanın:
 
 ```
 
+  "sources": { ... },
+  "settings": {
+    "optimizer": { ... },
+    "evmVersion": "<VERSION>"
+  }
+}
 ```
+### Hedef seçenekleri
+
+Aşağıda hedef EVM sürümlerinin ve her bir sürümde tanıtılan derleyiciyle ilgili değişikliklerin bir listesi bulunmaktadır. Her sürüm arasında geriye dönük uyumluluk garanti edilmez.
+
++ `homestead` (en eski sürüm)
++ `tangerineWhistle`
+  Diğer hesaplara erişim için gaz maliyeti artarken, gaz tahmini ve kullanımı ile ilgili.
+  Harici aramalar için varsayılan olarak gönderilen tüm gazlar için önceden belirli bir miktarın blokajı.
++ `spuriousDragon`
+  `exp` opcode için gaz maliyeti, gaz kestirimi ve optimize edici ile ilgili olarak arttı.
++ `byzantium` (varsayılan)
+  opcodes `returndatacopy`, `returndatasize` ve `staticcall` montajda kullanılabilir.
+  `staticcall` opcode, kütüphane dışı görünümü veya saf işlevleri çağırırken kullanılır; bu, işlevlerin EVM düzeyinde durum değiştirmesini önler, yani geçersiz tür dönüşümleri kullandığınızda bile geçerlidir.
+  İşlev çağrılarından döndürülen dinamik verilere erişmek mümkündür.
+  `revert` kodu tanıtıldı, bu return()ün, gaz harcamasına neden olmayacağı anlamına gelir.
++ `Constantinople` (hala devam ediyor)
+  `shl`, `shr` ve `sar` opcoları montajda mevcuttur.
+  vites değiştirme operatörleri, değişen işlem kodlarını kullanır ve bu nedenle daha az gaza ihtiyaç duyar.
+
+## Derleyici Giriş ve Çıkış JSON Açıklaması
+
+Özellikle daha karmaşık ve otomatik kurulumlar için Solidity compiler ile arayüz oluşturmanın önerilen yolu JSON-giriş-çıkış arayüzüdür. Aynı arabirim, derleyicinin tüm dağıtımları tarafından sağlanır.
+
+Alanlar genellikle değişime tabidir, bazıları isteğe bağlıdır (belirtildiği gibi), ancak yalnızca geriye dönük uyumlu değişiklikler yapmaya çalışıyoruz.
+
+Derleyici API, JSON formatlı bir girdi bekler ve derleme sonucunu JSON formatlı bir çıktı olarak verir.
+
+Aşağıdaki alt bölümler, bir örnek yoluyla formatı açıklar. Elbette, açıklamalara izin verilmez ve burada sadece açıklayıcı amaçlar için kullanılır.
+
+### Giriş Açıklaması
+
 ```
+{
+  // Required: Source code language, such as "Solidity", "Vyper", "lll", "assembly", etc.
+  "language": "Solidity",
+  // Required
+  "sources":
+  {
+    // The keys here are the "global" names of the source files,
+    // imports can use other files via remappings (see below).
+    "myFile.sol":
+    {
+      // Optional: keccak256 hash of the source file
+      // It is used to verify the retrieved content if imported via URLs.
+      "keccak256": "0x123...",
+      // Required (unless "content" is used, see below): URL(s) to the source file.
+      // URL(s) should be imported in this order and the result checked against the
+      // keccak256 hash (if available). If the hash doesn't match or none of the
+      // URL(s) result in success, an error should be raised.
+      // Using the commandline interface only filesystem paths are supported.
+      // With the JavaScript interface the URL will be passed to the user-supplied
+      // read callback, so any URL supported by the callback can be used.
+      "urls":
+      [
+        "bzzr://56ab...",
+        "ipfs://Qma...",
+        "/tmp/path/to/file.sol"
+        // If files are used, their directories should be added to the command line via
+        // `--allow-paths <path>`.
+      ]
+    },
+    "mortal":
+    {
+      // Optional: keccak256 hash of the source file
+      "keccak256": "0x234...",
+      // Required (unless "urls" is used): literal contents of the source file
+      "content": "contract mortal is owned { function kill() { if (msg.sender == owner) selfdestruct(owner); } }"
+    }
+  },
+  // Optional
+  "settings":
+  {
+    // Optional: Sorted list of remappings
+    "remappings": [ ":g/dir" ],
+    // Optional: Optimizer settings
+    "optimizer": {
+      // disabled by default
+      "enabled": true,
+      // Optimize for how many times you intend to run the code.
+      // Lower values will optimize more for initial deployment cost, higher values will optimize more for high-frequency usage.
+      "runs": 200
+    },
+    "evmVersion": "byzantium", // Version of the EVM to compile for. Affects type checking and code generation. Can be homestead, tangerineWhistle, spuriousDragon, byzantium or constantinople
+    // Metadata settings (optional)
+    "metadata": {
+      // Use only literal content and not URLs (false by default)
+      "useLiteralContent": true
+    },
+    // Addresses of the libraries. If not all libraries are given here, it can result in unlinked objects whose output data is different.
+    "libraries": {
+      // The top level key is the the name of the source file where the library is used.
+      // If remappings are used, this source file should match the global path after remappings were applied.
+      // If this key is an empty string, that refers to a global level.
+      "myFile.sol": {
+        "MyLib": "0x123123..."
+      }
+    }
+    // The following can be used to select desired outputs based
+    // on file and contract names.
+    // If this field is omitted, then the compiler loads and does type checking,
+    // but will not generate any outputs apart from errors.
+    // The first level key is the file name and the second level key is the contract name.
+    // An empty contract name is used for outputs that are not tied to a contract
+    // but to the whole source file like the AST.
+    // A star as contract name refers to all contracts in the file.
+    // Similarly, a star as a file name matches all files.
+    // To select all outputs the compiler can possibly generate, use
+    // "outputSelection: { "*": { "*": [ "*" ], "": [ "*" ] } }"
+    // but note that this might slow down the compilation process needlessly.
+    //
+    // The available output types are as follows:
+    //
+    // File level (needs empty string as contract name):
+    //   ast - AST of all source files
+    //   legacyAST - legacy AST of all source files
+    //
+    // Contract level (needs the contract name or "*"):
+    //   abi - ABI
+    //   devdoc - Developer documentation (natspec)
+    //   userdoc - User documentation (natspec)
+    //   metadata - Metadata
+    //   ir - New assembly format before desugaring
+    //   evm.assembly - New assembly format after desugaring
+    //   evm.legacyAssembly - Old-style assembly format in JSON
+    //   evm.bytecode.object - Bytecode object
+    //   evm.bytecode.opcodes - Opcodes list
+    //   evm.bytecode.sourceMap - Source mapping (useful for debugging)
+    //   evm.bytecode.linkReferences - Link references (if unlinked object)
+    //   evm.deployedBytecode* - Deployed bytecode (has the same options as evm.bytecode)
+    //   evm.methodIdentifiers - The list of function hashes
+    //   evm.gasEstimates - Function gas estimates
+    //   ewasm.wast - eWASM S-expressions format (not supported atm)
+    //   ewasm.wasm - eWASM binary format (not supported atm)
+    //
+    // Note that using a using `evm`, `evm.bytecode`, `ewasm`, etc. will select every
+    // target part of that output. Additionally, `*` can be used as a wildcard to request everything.
+    //
+    "outputSelection": {
+      "*": {
+        "*": [
+          "metadata", "evm.bytecode" // Enable the metadata and bytecode outputs of every single contract.
+          , "evm.bytecode.sourceMap" // Enable the source map output of every single contract.
+        ],
+        "": [
+          "ast" // Enable the AST output of every single file.
+        ]
+      },
+      // Enable the abi and opcodes output of MyContract defined in file def.
+      "def": {
+        "MyContract": [ "abi", "evm.bytecode.opcodes" ]
+      }
+    }
+  }
+}
 ```
+### Çıkış Açıklaması
 ```
+{
+  // Optional: not present if no errors/warnings were encountered
+  "errors": [
+    {
+      // Optional: Location within the source file.
+      "sourceLocation": {
+        "file": "sourceFile.sol",
+        "start": 0,
+        "end": 100
+      ],
+      // Mandatory: Error type, such as "TypeError", "InternalCompilerError", "Exception", etc.
+      // See below for complete list of types.
+      "type": "TypeError",
+      // Mandatory: Component where the error originated, such as "general", "ewasm", etc.
+      "component": "general",
+      // Mandatory ("error" or "warning")
+      "severity": "error",
+      // Mandatory
+      "message": "Invalid keyword"
+      // Optional: the message formatted with source location
+      "formattedMessage": "sourceFile.sol:100: Invalid keyword"
+    }
+  ],
+  // This contains the file-level outputs. In can be limited/filtered by the outputSelection settings.
+  "sources": {
+    "sourceFile.sol": {
+      // Identifier of the source (used in source maps)
+      "id": 1,
+      // The AST object
+      "ast": {},
+      // The legacy AST object
+      "legacyAST": {}
+    }
+  },
+  // This contains the contract-level outputs. It can be limited/filtered by the outputSelection settings.
+  "contracts": {
+    "sourceFile.sol": {
+      // If the language used has no contract names, this field should equal to an empty string.
+      "ContractName": {
+        // The Ethereum Contract ABI. If empty, it is represented as an empty array.
+        // See https://github.com/ethereum/wiki/wiki/Ethereum-Contract-ABI
+        "abi": [],
+        // See the Metadata Output documentation (serialised JSON string)
+        "metadata": "{...}",
+        // User documentation (natspec)
+        "userdoc": {},
+        // Developer documentation (natspec)
+        "devdoc": {},
+        // Intermediate representation (string)
+        "ir": "",
+        // EVM-related outputs
+        "evm": {
+          // Assembly (string)
+          "assembly": "",
+          // Old-style assembly (object)
+          "legacyAssembly": {},
+          // Bytecode and related details.
+          "bytecode": {
+            // The bytecode as a hex string.
+            "object": "00fe",
+            // Opcodes list (string)
+            "opcodes": "",
+            // The source mapping as a string. See the source mapping definition.
+            "sourceMap": "",
+            // If given, this is an unlinked object.
+            "linkReferences": {
+              "libraryFile.sol": {
+                // Byte offsets into the bytecode. Linking replaces the 20 bytes located there.
+                "Library1": [
+                  { "start": 0, "length": 20 },
+                  { "start": 200, "length": 20 }
+                ]
+              }
+            }
+          },
+          // The same layout as above.
+          "deployedBytecode": { },
+          // The list of function hashes
+          "methodIdentifiers": {
+            "delegate(address)": "5c19a95c"
+          },
+          // Function gas estimates
+          "gasEstimates": {
+            "creation": {
+              "codeDepositCost": "420000",
+              "executionCost": "infinite",
+              "totalCost": "infinite"
+            },
+            "external": {
+              "delegate(address)": "25000"
+            },
+            "internal": {
+              "heavyLifting()": "infinite"
+            }
+          }
+        },
+        // eWASM related outputs
+        "ewasm": {
+          // S-expressions format
+          "wast": "",
+          // Binary format (hex string)
+          "wasm": ""
+        }
+      }
+    }
+  }
+}
 ```
-```
-```
-```
+## Hata türleri
+`JSONError`: JSON girişi, istenen formata uygun değil; giriş bir JSON nesnesi değil, dil desteklenmiyor.
+`IOError`: IO ve çözülemeyen URL veya sağlanan kaynaklardaki karma uyuşmazlık gibi işleme hatalarını içe aktarın.
+`ParserError`: Kaynak kodu dil kurallarına uymuyor.
+`DocstringParsingError`: Yorum bloğundaki NatSpec etiketleri ayrıştırılamaz.
+`SyntaxError`: `continue` gibi sözdizimsel bir hata `for` döngüsünün dışında kullanılır.
+`DeclarationError`: Geçersiz, çözülemeyen veya çakışan tanımlayıcı adları. Örneğin. `Identifier Not Found`
+`TypeError`: Yazım sistemi içinde geçersiz tür dönüştürmeleri, geçersiz atama vb. Gibi hatalar
+`UnimplementedFeatureError`: Özellik, derleyici tarafından desteklenmiyor, ancak gelecek sürümlerde desteklenmesi bekleniyor.
+`InternalCompilerError`: Derleyicide tetiklenen dahili hata - bu bir sorun olarak rapor edilmelidir.
+`Exception`: Derleme sırasındaki bilinmeyen hata - bu bir sorun olarak rapor edilmelidir.
+`CompilerError`: Derleyici yığınının geçersiz kullanımı - bu bir sorun olarak bildirilmelidir.
+`FatalError`: Ölümcül hata doğru işlenmedi - bu bir sorun olarak bildirilmelidir.
+`Warning`: Derlemeyi durdurmayan, ancak mümkünse ele alınması gereken bir uyarı.
 ```
 ```
 ```

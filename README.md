@@ -6002,25 +6002,25 @@ Bir sözleşmenin bilinen bir hatayı içeren bir derleyici ile derlenmesi ve s�
 
 Aşağıdaki bilinen hataların JSON dosyası, aşağıdaki hatalarla birlikte her bir hata için bir nesne dizisidir:
 
-**name**
++ **name**
 Böceğe verilen benzersiz ad
-**summary**
++ **summary**
 Böceğin kısa açıklaması
-**description**
++ **description**
 Hatanın ayrıntılı açıklaması
-**link**
++ **link**
 İsteğe bağlı olarak daha ayrıntılı bilgi içeren bir web sitesinin URL'si
-**introduced**
++ **introduced**
 Hata içeren ilk yayınlanan derleyici sürümü, isteğe bağlı
-**fixed**
++ **fixed**
 Artık hata içermeyen ilk yayınlanan derleyici sürümü
-**publish**
++ **publish**
 Böceğin genel olarak tanındığı tarih, isteğe bağlı
-**severity**
++ **severity**
 Böceğin şiddeti: çok düşük, düşük, orta, yüksek. Kontrat testlerinde keşfedilebilirlik, oluşma olasılığı ve istismarlar nedeniyle olası hasar dikkate alınmaktadır.
-**conditions**
++ **conditions**
 Hatayı tetiklemek için karşılanması gereken şartlar. Şu anda, bu bir boolean value `optimizer` içerebilen bir nesnedir, yani hatayı etkinleştirmek için optimizer'ın açık olması gerektiği anlamına gelir. Hiçbir koşul belirtilmezse, hatanın mevcut olduğunu varsayalım.
-**control**
++**control**
 Bu alan, akıllı sözleşmenin hatayı içerip içermediğini bildiren farklı kontroller içerir. İlk kontrol tipi, böcek varsa, kaynak koduyla (“kaynak-regex”) eşleştirilmesi gereken Javascript normal ifadeleridir. Eşleşme yoksa, böcek muhtemelen mevcut değildir. Bir eşleşme varsa, böcek mevcut olabilir. Geliştirilmiş doğruluk için kontroller, yorumları çıkarmadan sonra kaynak koda uygulanmalıdır. İkinci kontrol tipi, Sertlik programının kompakt AST'sinde kontrol edilecek modellerdir (“ast-compact-json-path”). Belirtilen arama sorgusu bir JsonPath ifadesidir. AIDS'in en az bir yolu sorguyla eşleşiyorsa, hata muhtemelen mevcuttur.
 ```
 [
@@ -6190,12 +6190,250 @@ Bu alan, akıllı sözleşmenin hatayı içerip içermediğini bildiren farklı 
     }
 ]
 ```
+# Destek
+
+Yardım her zaman takdir edilir!
+
+Başlamak için, Kendinizi Solidity bileşenlerine ve yapım sürecine tanımak için [Kaynaktan geliştirme](https://solidity.readthedocs.io/en/latest/installing-solidity.html#building-from-source)'yi deneyebilirsiniz. Ayrıca, Solidity'de akıllı sözleşmeler yazarken iyi niyetli olmanız yararlı olabilir.
+
+Özellikle aşağıdaki alanlarda yardıma ihtiyacımız var:
+
++ Belgeleri geliştirme
++ StackExchange ve Solidity Gitter ile ilgili diğer kullanıcıların sorularını cevaplamak
++ [Solidity’nin GitHub sorunlarını](https://github.com/ethereum/solidity/issues), özellikle de dış katkıda bulunanlar için tanıtım sorunları olarak adlandırılan iyi bir ilk sorun olarak etiketlenenleri düzeltmek ve yanıtlamak.
+
+Lütfen bu projenin bir [Katılımcı Davranış Kuralları](https://raw.githubusercontent.com/ethereum/solidity/develop/CODE_OF_CONDUCT.md) ile yayınlandığını unutmayın. Bu projeye katılarak - meselelerde, taleplerde bulunma veya Gitter kanallarında - şartlarına uymayı kabul edersiniz.
+
+## Sorunlar Nasıl Bildirilir?
+Bir sorunu bildirmek için, lütfen [GitHub issues tracker](https://github.com/ethereum/solidity/issues) kullanın. Sorunları bildirirken, lütfen aşağıdaki detayları belirtin:
+
++ Hangi Solidity sürümünü kullanıyorsunuz
++ Kaynak kodu neydi (varsa)
++ Hangi platformda çalışıyorsun
++ Sorun nasıl yeniden oluşturulur
++ Sorunun sonucu neydi
++ Beklenen davranış nedir?
+
+Soruna neden olan kaynak kodunu en öz hale indirgemek her zaman çok yardımcı olur ve bazen bir yanlış anlaşılmaya açıklık getirir.
+
+## Pull Request İstekleri için İş Akışı
+
+Katkıda bulunmak için, lütfen ana geliştirme bölümünden ayrılarak ve değişikliklerinizi başka bir branchte yapın. Taahhüt mesajlarınız, yaptığınız şeye ek olarak neden değişiklik yaptığınızı detaylandırmalıdır (küçük bir değişiklik olmadığı sürece).
+
+Çatalınızı yaptıktan sonra herhangi bir değişiklik yapmanız gerekiyorsa (örneğin, olası birleştirme çatışmalarını çözmek için), lütfen git birleştirme kullanmaktan kaçının ve yerine dalınızı yeniden açın. Bu, değişikliklerinizi daha kolay gözden geçirmemize yardımcı olacaktır.
+
+Ayrıca, yeni bir özellik yazıyorsanız, lütfen `test /` altında uygun test senaryoları eklediğinizden emin olun (aşağıya bakın).
+
+Bununla birlikte, daha büyük bir değişiklik yapıyorsanız, lütfen önce [Solidity Development Gitter](https://gitter.im/ethereum/solidity-dev) kanalına danışın (yukarıda belirtilenlerden farklı olarak, bu ilk önce dil kullanımı yerine derleyici ve dil gelişimine odaklanır).
+
+Yeni özellikler ve hata düzeltmeleri `Changelog.md` dosyasına eklenmelidir: lütfen uygun olduğunda önceki girişlerin stilini izleyin.
+
+Son olarak, lütfen bu projenin kodlama stiline saygı duyduğunuzdan emin olun. Ayrıca, `CI` testi yapmamıza rağmen, lütfen kodunuzu test edin ve bir çekme isteği göndermeden önce yerel olarak oluşturulduğundan emin olun.
+
+Yardımınız için teşekkürler!
+
+## Derleyici Sınamalarını Çalıştırma
+
+`./Scripts/tests.sh` betiği çoğu Solidity testini yürütür ve yoldaysa `aleth`'i otomatik olarak çalıştırır, ancak indirmez, bu yüzden önce onu yüklemeniz gerekir. Ayrıntılar için okumaya devam edin.
+
+Solidity, çoğu en solest uygulamada toplanmış farklı test türlerini içerir. Bunlardan bazıları test modunda `aleth ` istemcisine, bazıları ise libz3'e ihtiyaç duyuyor.
+
+Ne aleth ne de `libz3` gerektiren basit bir test setini çalıştırmak için `./scripts/soltest.sh --no-ipc --no-smt` komutunu çalıştırın. Bu komut dosyası dahili olarak `./build/test/soltest` dosyasını çalıştırır.
+
+### [Not]()
+
+> Git temelinde `aleth` veya `libz3` olmadan yukarıdaki temel kümeleri çalıştırmak isteyenler için Windows ortamında çalışanlar, yapmanız gerekenler: `./build/test/Release/soltest.exe - --no-ipc --no-smt `. Bunu düz komut sisteminde çalıştırıyorsanız,`. \ Build \ test \ Release \ soltest.exe - --no-ipc --no-smt` komutunu kullanın.
+
+`--No-smt seçeneği` `libz3` gerektiren testleri ve `--no-ipc` `aleth` gerektiren testleri devre dışı bırakır.
+
+İpc testlerini çalıştırmak istiyorsanız (üretilen kodun anlamını test eder), `aleth`'i kurmanız ve test modunda çalıştırmanız gerekir: `aleth --db memorydb --test -d / tmp / testeth`.
+
+Gerçek testleri çalıştırmak için, kullanın: `./scripts/soltest.sh --ipcpath /tmp/testeth/geth.ipc`.
+
+Bir test alt kümesini çalıştırmak için filtreleri kullanabilirsiniz: `./scripts/soltest.sh -t TestSuite / TestName --ipcpath /tmp/testeth/geth.ipc`, burada `TestNam`e bir joker karakter olabilir.
+
+Örneğin, işte yapabileceğiniz bir örnek `test. ./scripts/soltest.sh -t "yulOptimizerTests / disambiguator / *" - no-ipc - no-smt.` Bu, ayırıcının tüm testlerini test edecektir.
+
+Tüm testlerin bir listesini almak için `./build/test/soltest --list_content = HRF - --ipcpath / tmp / irrelevant` kullanın.
+
+`GDB` kullanarak hata ayıklamak istiyorsanız, “usual” dan farklı bir şekilde kurulumu yaptığınızdan emin olun. Örneğin, derleme klasörünüzde aşağıdaki komutu çalıştırabilirsiniz:
 
 ```
+cmake -DCMAKE_BUILD_TYPE = Hata ayıklama ..
+Make
 ```
+
+Bu, `--debug` bayrağını kullanarak bir testte hata ayıkladığınızda, içinde kırılabileceğiniz veya yazdırabileceğiniz fonksiyonlara ve değişkenlere erişebileceğiniz şekilde semboller yaratacaktır.
+
+`./Scripts/tests.sh` betiği ayrıca en solda bulunanlara ek olarak komut satırı testlerini ve derleme testlerini de yürütür.
+
+`CI`, Emscripten hedefinin derlenmesini gerektiren ek testler (solc-j'ler ve üçüncü taraf Solidity çerçevelerinin test edilmesi dahil) çalışır.
+
+### [Not]()
+
+Aleth'in bazı versiyonları test için kullanılamaz. Solidity sürekli entegrasyon testlerinin kullandığı aynı sürümü kullanmanızı öneririz. Şu anda `CI aleth 1.5.0-alpha.7` sürümünü kullanıyor.
+
+## Sözdizimi Testleri Yazma ve Çalıştırma
+
+Sözdizimi testleri, derleyicinin geçersiz kod için doğru hata mesajları oluşturduğunu ve geçerli kodu uygun şekilde kabul ettiğini kontrol eder. Testler `/ libsolidity / syntaxTests` klasörü içindeki ayrı dosyalarda saklanırlar. Bu dosyalar, ilgili testin beklenen sonuçlarını / sonuçlarını gösteren ek açıklamalar içermelidir. Test paketi bunları belirtilen beklentilere göre derler ve denetler.
+
+Örneğin: `./test/libsolidity/syntaxTests/double_stateVariable_declaration.sol`
 ```
+sözleşme testi {
+    uint256 değişkeni;
+    uint128 değişkeni;
+}
+// ----
+// DeclarationError: (36-52)
 ```
 
+Bir sözdizimi testi, en azından testin kendisinin yapıldığı sözleşmeyi içermeli, ardından ayırıcı `// ----.` tarafından takip edilir. Ayırıcıyı takip eden yorumlar beklenen derleyici hatalarını veya uyarılarını tanımlamak için kullanılır. Sayı aralığı, hatanın oluştuğu kaynaktaki konumu gösterir. Sözleşmenin herhangi bir hata veya uyarı olmadan derlenmesini istiyorsanız, ayırıcıyı ve bunu izleyen yorumları bırakabilirsiniz.
+
+Yukarıdaki örnekte, durum değişkeni değişkeni iki kez bildirildi, buna izin verilmiyor. Bu, tanımlayıcının zaten bildirildiğini belirten bir `DeclarationError` ile sonuçlanır.
+
+`İsoltest` aracı bu testler için kullanılır. Bunları `./Build/test/tools/` adresinde bulabilirsiniz. Tercih ettiğiniz metin editörünü kullanarak başarısız sözleşmelerin düzenlenmesini sağlayan etkileşimli bir araçtır. İkinci değişken değişkeni bildirimini kaldırarak bu testi kesmeye çalışalım:
+```
+contract test {
+    uint256 variable;
+}
+// ----
+// DeclarationError: (36-52): Identifier already declared.
+```
+Tekrar çalıştırmak `./build/test/isoltest` tekrar test hatası veriyor:
+
+```
+syntaxTests/double_stateVariable_declaration.sol: FAIL
+    Contract:
+        contract test {
+            uint256 variable;
+        }
+
+    Expected result:
+        DeclarationError: (36-52): Identifier already declared.
+    Obtained result:
+        Success
+```
+`isoltest`, elde edilen sonucun yanında beklenen sonucu yazdırır ve ayrıca geçerli sözleşme dosyasını düzenlemek, güncellemek veya atlamak veya uygulamadan çıkmak için bir yol sağlar.
+
+Başarısız testler için çeşitli seçenekler sunar:
+
++ `edit`: `isoltest` sözleşmeyi bir düzenleyicide açmaya çalışır, böylece düzeltebilirsiniz. Komut satırında (`isoltest --editor / path / to / editor`),` EDITOR` ortam değişkeninde veya sadece / usr / bin / editor (bu sırada) verilen editörü kullanır.
++ `update`: Test edilen sözleşme beklentilerini günceller. Bu, karşılanmayan beklentileri kaldırarak ve eksik beklentileri ekleyerek açıklamaları günceller. Test daha sonra tekrar yapılır.
++ `skip`: Bu özel testin yürütülmesini atlar.
++ `quit`: `isoltest` çıkar.
+
+Bu seçeneklerin tümü mevcut sözleşme için geçerlidir, test sürecinin tamamını durduracak olan istifaları bekleyin.
+
+Yukarıdaki testi otomatik olarak güncellemek aşağıdaki sonucu verir:
+```
+contract test {
+    uint256 variable;
+}
+// ----
+```
+ve testi tekrar çalıştırın. Şimdi tekrar geçiyor:
+```
+Re-running test case...
+syntaxTests/double_stateVariable_declaration.sol: OK
+
+```
+### [Not]()
+
+Sözleşme dosyası için neyi test ettiğini açıklayan bir ad seçin, örnek `double_variable_declaration.sol.` Kalıtım veya kontratlar arası aramaları test etmediğiniz sürece tek bir dosyaya birden fazla sözleşme koymayın. Her dosya yeni özelliğinizin bir yönünü test etmelidir.
+
+## Fuzzer'i AFL Ile Çalıştırmak
+
+Fuzzing, istisnai yürütme durumlarını (segmentasyon hataları, istisnalar, vb.) Bulmak için rasgele girişlerde programları çalıştıran bir tekniktir. Modern sesler zekidir ve girdi içinde yönlendirilmiş bir arama yaparlar. Kaynak kodunu girdi olarak alan ve dahili bir derleyici hatası, bölümleme hatası veya benzeri bir hatayla karşılaştığında başarısız olan, ancak örneğin bir hata içeriyorsa başarısız olmayan, `solfuzzer` adında özel bir ikili kodumuz var. Bu sayede, pırıl pırıl araçlar derleyicide iç problemler bulabilir.
+
+Fuzzing için çoğunlukla AFL kullanıyoruz. AFL paketlerini depolarınızdan indirip yüklemeniz (`afl, afl-clang`) veya manuel olarak oluşturmanız gerekir. Ardından, derleyici olarak AFL ile Solidity (veya sadece` solfuzzer binary`) oluşturun:
+
+```
+cd build
+# if needed
+make clean
+cmake .. -DCMAKE_C_COMPILER=path/to/afl-gcc -DCMAKE_CXX_COMPILER=path/to/afl-g++
+make solfuzzer
+```
+Bu aşamada, aşağıdakine benzer bir mesaj görebilmeniz gerekir:
+```
+Scanning dependencies of target solfuzzer
+[ 98%] Building CXX object test/tools/CMakeFiles/solfuzzer.dir/fuzzer.cpp.o
+afl-cc 2.52b by <lcamtuf@google.com>
+afl-as 2.52b by <lcamtuf@google.com>
+[+] Instrumented 1949 locations (64-bit, non-hardened mode, ratio 100%).
+[100%] Linking CXX executable solfuzzer
+
+```
+Enstrümantasyon mesajları görünmediyse, AFL’nin clang ikili dosyalarını gösteren cmake bayraklarını değiştirmeyi deneyin:
+```
+# if previously failed
+make clean
+cmake .. -DCMAKE_C_COMPILER=path/to/afl-clang -DCMAKE_CXX_COMPILER=path/to/afl-clang++
+make solfuzzer
+
+```
+Aksi takdirde, çalıştırma sırasında fuzzer, ikili aygıtın kullanılmadığını söyleyen bir hata ile durur:
+```
+afl-fuzz 2.52b by <lcamtuf@google.com>
+... (truncated messages)
+[*] Validating target binary...
+
+[-] Looks like the target binary is not instrumented! The fuzzer depends on
+    compile-time instrumentation to isolate interesting test cases while
+    mutating the input data. For more information, and for tips on how to
+    instrument binaries, please see /usr/share/doc/afl-doc/docs/README.
+
+    When source code is not available, you may be able to leverage QEMU
+    mode support. Consult the README for tips on how to enable this.
+    (It is also possible to use afl-fuzz as a traditional, "dumb" fuzzer.
+    For that, you can use the -n option - but expect much worse results.)
+
+[-] PROGRAM ABORT : No instrumentation detected
+         Location : check_binary(), afl-fuzz.c:6920
+
+```
+Daha sonra, bazı örnek kaynak dosyalarına ihtiyacınız var. Bu, bulanıklığın hata bulmasını çok kolaylaştırır. Bazı dosyaları sözdizimi testlerinden kopyalayabilir veya test dosyalarını belgelerden veya diğer testlerden çıkarabilirsiniz:
+
+```
+mkdir /tmp/test_cases
+cd /tmp/test_cases
+# extract from tests:
+path/to/solidity/scripts/isolate_tests.py path/to/solidity/test/libsolidity/SolidityEndToEndTest.cpp
+# extract from documentation:
+path/to/solidity/scripts/isolate_tests.py path/to/solidity/docs docs
+```
+
+AFL belgeleri, korpusun (ilk giriş dosyaları) çok büyük olmaması gerektiğini belirtir. Dosyaların kendileri 1 kB'den büyük olmamalıdır ve işlevsellik başına en fazla bir giriş dosyası olmalıdır, bu nedenle az sayıda başlayarak daha iyi bir başlangıç yapın. İkili dosyaların benzer davranışlarına neden olan giriş dosyalarını kesebilen `afl-cmin` adında bir araç da vardır.
+
+Şimdi bulanıklaştırıcıyı çalıştırın (`-m`, hafıza boyutunu 60 MB'a çıkarır):
+```
+afl-fuzz -m 60 -i /tmp/test_cases -o /tmp/fuzzer_reports -- /path/to/solfuzzer
+```
+Fuzzer `/ tmp / fuzzer_reports` içinde başarısızlığa yol açan kaynak dosyalar oluşturur. Genellikle aynı hatayı üreten birçok benzer kaynak dosya bulur. Benzersiz hataları filtrelemek için `scripts / uniqueErrors.sh` aracını kullanabilirsiniz.
+
+## Whisker
+*Whisker* benzer bir tel şablonudur. Derleyici tarafından kodun okunabilirliğini ve böylece korunabilirliğini ve doğrulanabilirliğini sağlamak için çeşitli yerlerde kullanılır.
+
+Sözdizimi whisker için önemli bir farkla birlikte gelir. Satır içi derlemeyle çakışmaları önlemek ve önlemek için `{{ve}}` şablon işaretleyicileri `<ve>` ile değiştirilir (satır içi derlemede <ve> sembolleri geçersiz, {ve} blokları sınırlandırmak için kullanılır). Diğer bir sınırlama ise listelerin yalnızca bir derinlikte çözülmüş olması ve tekrarlanmamasıdır. Bu gelecekte değişebilir.
+
+Kabaca bir teknik özellik şudur:
+
+Herhangi bir `<name>` oluşumunda, herhangi bir kaçış olmadan ve yinelenen değiştirmeler olmadan sağlanan değişken adının dize değeri ile değiştirilir. Bir alan `<#name> ... </name>` ile sınırlandırılabilir. `<inner>` öğelerini her zaman değiştirerek, şablon sistemine sağlanan değişken kümelerinin olduğu kadar içeriğinin bir araya getirilmesiyle değiştirilir. Üst düzey değişkenler bu alanlarda da kullanılabilir.
+
+# LLL
+LLL, EVM için s ifadeleri sözdizimi olan düşük seviye bir dildir.
+
+Solidity deposu, `assembler` alt sistemini Solidity ile paylaşan bir LLL derleyicisi içerir. Bununla birlikte, hala derlendiğinin sürdürülmesinin yanı sıra, başka hiçbir iyileştirme yapılmamıştır.
+
+Özel olarak talep edilmedikçe inşa edilmez:
+```
+$ cmake -DLLL = On ..
+$ cmake - build.
+
+```
+### [Warning]()
+
+> LLL kod tabanı kullanımdan kaldırılmıştır ve ileride Solidity havuzundan da kaldırılacaktır.
 
 
 
@@ -6204,16 +6442,3 @@ Bu alan, akıllı sözleşmenin hatayı içerip içermediğini bildiren farklı 
 
 
 
-
-
-
-
- - 
-  - 
-  - 
-  - Birimler ve Global Olarak Mevcut Değişkenler
-  - İfadeler ve Kontrol Yapıları
-  - Sözleşmeler
-  - Solidity Assembly
-  - Çeşitli
-  - Solidity v0.5.0 Değişiklikleri

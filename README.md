@@ -3788,19 +3788,2417 @@ Ethereum Natural Specification (NatSpec) hakkında ek bilgi [burada](https://git
 
 Derlemeyi doğrulamak için, kaynaklar meta veri dosyasındaki bağlantı yoluyla Swarm'dan alınabilir. Doğru sürümün derleyicisi (“resmi” derleyicilerin bir parçası olarak kontrol edilir) belirtilen girdilerle bu girdiye çağrılır. Elde edilen bytecode, yaratma işleminin veya 'CREATE' opcode verilerinin verileriyle karşılaştırılır. Bu, hash bayt kodunun bir parçası olduğundan meta verileri otomatik olarak doğrular. Aşırı veri, arayüze göre çözülmesi ve kullanıcıya sunulması gereken yapıcı girdi verilerine karşılık gelir.
 
+# Sözleşme ABI Özellikleri
+
+## Temel tasarım
+
+Sözleşme Uygulaması İkili Arayüzü (ABI), Ethereum ekosistemindeki sözleşmelerle hem blok zinciri dışından hem de sözleşmeden sözleşmeye etkileşim için izlenen standart yoludur. Veriler, bu tarifnamede anlatıldığı gibi, türüne göre kodlanmıştır. Kodlama kendi kendini tanımlamaz ve bu nedenle kod çözme işlemi için bir şema gerektirir.
+
+Bir sözleşmenin arabirim işlevlerinin derleme zamanında ve statik olarak bilinen, güçlü bir şekilde yazılmış olduğunu varsayıyoruz. Tüm sözleşmelerin, derleme zamanında mevcut olarak adlandırdıkları sözleşmelerin arayüz tanımlarına sahip olacağını varsayıyoruz.
+
+Bu şartname, arayüzü dinamik olan veya sadece çalışma zamanında bilinen başka sözleşmeleri ele almaz.
+
+## Fonskiyon Seçici
+
+Bir fonksiyon çağrısı için çağrı verilerinin ilk dört baytı çağrılacak işlevi belirtir. Fonksiyonun imzasının Keccak-256 (SHA-3) karesinin ilk (sol, büyük-endian cinsinden yüksek) dördüncü baytıdır. İmza, veri konum belirteci olmadan temel prototipin kanonik ifadesi, yani parametre tiplerinin parantezli listesi bulunan fonksiyon adı olarak tanımlanır. Parametre türleri tek bir virgülle bölünür - boşluk kullanılmaz.
+
+### [Not]()
+
+> Bir fonksiyonun dönüş tipi bu imzanın bir parçası değildir. Solidity’nin işlevinde [aşırı yükleme](https://solidity.readthedocs.io/en/latest/contracts.html#overload-function) dönüş tipleri dikkate alınmaz. Bunun nedeni, işlev çağrısı özünürlüğünü bağlamdan bağımsız tutmaktır. Bununla birlikte, [ABI’nın JSON açıklaması](https://solidity.readthedocs.io/en/latest/abi-spec.html#abi-json) hem girdi hem de çıktıları içerir.
+
+## Argüman Kodlama
+Beşinci bayttan başlayarak, kodlanmış argümanlar izlenir. Bu kodlama başka yerlerde de kullanılır; return değerleri ve ayrıca olay argümanları, işlevi belirten dört bayt olmadan aynı şekilde kodlanır.
+
+## Türleri
+
+Aşağıdaki temel türler mevcuttur:
+
+`uint <M>`: işaretsiz tamsayı tipi M bit, '0 <M <= 256', 'M% 8 == 0'. 'Uint32', 'Uint8', 'Uint256'.
+`int <M>`: İkisinin tamamlayıcısı, işaretli tamsayı türü M bit, '0 <M <= 256', 'M% 8 == 0'.
+`address`: varsayılan yorum ve dil yazımı dışında, uint160'a eşdeğer. İşlev seçiciyi hesaplamak için adres kullanılır.
+`uint, int`: uint256, int256 kelimesinin eş anlamlıları. İşlev seçiciyi hesaplamak için, uint256 ve int256 kullanılmalıdır.
+`bool`: 0 ve 1 değerleriyle sınırlandırılmış uint8 değerine eşdeğerdir. İşlev seçiciyi hesaplamak için bool kullanılır.
+`fixed <M> x <N>`: işaretli sabit nokta ondalık sayı M bit, '8 <= M <= 256', 'M% 8 == 0' ve 'v <v =' olarak ifade edilen '0 <N <= 80 (10 ** N)'.
+`ufixed <M> x <N>`: sabit '<M> x <N>' işaretsiz varyantı.
+`fixed, ufixed`: sırasıyla 1212x18, eşek 1212x18 kelimesinin eş anlamlıları. İşlev seçiciyi hesaplamak için, sabit128x18 ve ufixed128x18 kullanılmalıdır.
+`byte <M>`: ikili M bayt türü, '0 <M <= 32'.
+`function`: bir adres (20 bayt), ardından bir fonksiyon seçicisi (4 bayt). 'Byte24' ile aynı kodlanmış.
+  
+Bunlar dışında aşağıdaki array çeşitleri mevcuttur:
+
+`<type> [M]`: verilen tipte sabit uzunlukta bir M elemanı dizisi, M> = 0.
+Aşağıdaki sabit boyutlu olmayan türler mevcuttur:
+
+`byte`: dinamik boyutlu bayt dizisi.
+`string`: UTF-8 kodlu olduğu kabul edilen dinamik boyutlu unicode string.
+`<type> []`: verilen tipte değişken uzunluklu bir eleman dizisi.
+
+Türler, virgüllerle ayrılmış, parantez içine alınmak suretiyle bir tuple ile birleştirilebilir:
+
+(T1, T2, ..., Tn): T1,…, Tn, n> = 0 türlerinden oluşan demet
+Tuples, tekil dizileri vb. oluşturmak mümkündür. Sıfır tuples oluşturmak da mümkündür (burada n == 0).
+
+## ABI türlerine Solidty Eşlenmesi
+
+Solidity, yukarıda belirtilen tüm türleri, aynı tuples hariç destekler. Öte yandan, bazı Solidity türleri ABI tarafından desteklenmemektedir.
+
+## Kodlama için Tasarım Kriterleri
+
+Kodlama, özellikle bazı argümanlar iç içe geçmiş diziler olduğunda yararlı olan aşağıdaki özelliklere sahip olacak şekilde tasarlanmıştır:
+
+Bir değere erişmek için gereken okuma sayısı, en çok argüman dizisi yapısının içindeki değerin derinliğidir, yani `a_i [k] [l] [r]` almak için dört okuma gerekir. ABI'nın önceki bir versiyonunda, okuma sayısı en kötü durumda toplam dinamik parametre sayısı ile doğrusal olarak ölçeklendirilmiştir.
+Bir değişken veya dizi öğesinin verileri diğer verilerle birleştirilmez ve yer değiştirebilir, yani yalnızca göreceli “adresleri” kullanır.
+
+## Kodlamanın Resmi Belirtimi
+
+Statik ve dinamik tipleri ayırt ediyoruz. Statik türler yerinde kodlanır ve dinamik türler, geçerli bloktan sonra ayrı bir yerde kodlanır.
+
+**Tanım:** Aşağıdaki türlere “dinamik” denir:
+
++ bytes
++ string
++ Herhangi bir T için T []
++ Herhangi bir dinamik T ve k> = 0 için T [k]
++ (T1, ..., Tk) Ti, bazı 1 için dinamikse, <<i <= k
+
+Diğer tüm tiplere “statik” denir.
+
+**Tanım:** `len (a)`, ikili bir dizede a olan bayt sayısıdır. `Len (a)` tipinin `uint256` olduğu varsayılmıştır.
+
+Gerçek kodlamayı `enc` olarak tanımlarız; ABI türlerinin ikili dizelere olan değerlerinin `len (enc (X))` X'in değerine bağlı olması ve X'in dinamik olması durumunda X değerine bağlı olması olarak tanımlarız.
+
+**Tanım:** X'in herhangi bir ABI değeri için, X'in türüne bağlı olarak, `enc (X)` 'ı tekrar tekrar tanımlarız.
+
++ `(T1, ..., Tk) k> = 0` ve herhangi bir `T1,…, Tk`
+
++ `enc (X) = head (X (1)) ... head (X (k)) tail (X (1)) ... tail (X (k))`
+
++ burada `X = (X (1), ..., X (k))` ve head ve tail Ti olarak statik bir tip olarak tanımlanır.
+
+`+ head (X (i)) = enc (X (i)) ve tail (X (i)) = ""(boş dize)`
+
+ve benzeri
+
++ head `(X (i)) = enc (len (head (X (1))) head (X (k)) tail (X (1)) ... head (X (i-1)))) tail (X (i)) = enc (X (i))`
+
+aksi takdirde, yani Ti dinamik bir tür ise.
+
+Dinamik durumda, `head (X (i))` iyi tanımlanmıştır, çünkü head parçalarının uzunlukları sadece tiplere bağlıdır, değerlere bağlı değildir. Değeri, enc (X) başlangıcına göre tail başlangıcının (X (i)) kaymasıdır.
+
++ Herhangi bir T ve k için T [k]:
+
++ `enc (X) = enc ((X [0], ..., X [k-1]))` yani, aynı tipte k elementleri olan bir demetmiş gibi kodlanır.
+
++ `T []`, burada X, k elemanlarına sahiptir (k, uint256 tipinde olduğu varsayılır): `enc (X) = enc (k) enc ([X [0], ..., X [k-1]])` yani, elemanların sayısı ile birlikte bir k statik boyutunda dizilmiş gibi kodlanır.
+
++ k uzunluğu olan bayt, (uint256 türünde olduğu varsayılır):
+
++ `enc (X) = enc (k) pad_right (X)`, yani bayt sayısı bir `uint256` olarak kodlanır, ardından X'nin bir bayt dizisi olarak gerçek değeri, ardından en az sıfır bayt sayısı, len (enc (X)) 32'nin bir katıdır.
+
+`String`:
+
++ `enc (X) = enc (enc_utf8 (X))`, yani X, `utf-8` kodludur ve bu değer bayt tipinden yorumlanır ve daha fazla kodlanır. Bu müteakip kodlamada kullanılan uzunluk, karakter sayısının değil, `utf-8 kod`lu dizenin bayt sayısı olduğuna dikkat edin.
+
++ `uint <M>`: `enc (X)`, yüksek dereceli (solda) tarafta, uzunluğu 32 bayt olacak şekilde sıfır baytla doldurulmuş X'in endian kodlamasıdır.
+
++ address: `uint160` durumunda olduğu gibi
+
+`int <M>`: `enc (X)` büyük-endian ikisinin, X (X) kodlaması, yüksek dereceli (solda) tarafta, negatif X için 0xff ve pozitif X için sıfır bayt olarak uzunlukları 32 bayttır.
+
+`bool`: uint8 örneğinde olduğu gibi, 1 için true ve 0 için false kullanılır.
+
+`sabit <M> x <N>`: `enc (X)`, enc `(X * 10 ** N)` 'dir, burada` X * 10 ** N`, bir `int256` olarak yorumlanır.
+
+`sabit`: fixed128x18 durumda olduğu gibi
+
+`eklenmiş <M> x <N>`: `enc (X)`, `enc (X * 10 ** N)` 'dir; buradaki `X * 10 ** N`, `uint256` olarak yorumlanır.
+
+`ufixed`: ufixed128x18 durumundaki gibi
+
+`bayt <M>`: enc (X), sıfır bayt ile 32 bayt uzunluğa kadar dolgulu X'teki bayt dizisidir.
+
+Herhangi bir X için, `len (enc (X))` 'nin 32'nin bir katı olduğuna dikkat edin.
+
+## İşlev Seçici ve Argüman Kodlama
+
+Sonuçta, a_1, ..., a_n parametrelerini içeren f işlevine yapılan bir çağrı,
+
+`function_selector (f) enc ((a_1, ..., a_n))`
+
+ve v_1, ..., v_k değerlerinin f değerleri
+
+`enc ((v_1, ..., v_k))`
+
+yani değerler bir demet halinde birleştirilir ve kodlanır.
+
+### Örnekler
+
+```
+pragma solidity >=0.4.16 <0.6.0;
+
+contract Foo {
+  function bar(bytes3[2] memory) public pure {}
+  function baz(uint32 x, bool y) public pure returns (bool r) { r = x > 32 || y; }
+  function sam(bytes memory, bool, uint[] memory) public pure {}
+}
+```
+
+Böylece Foo örneğimize göre, 69 ve true parametreleriyle baz çağırmak istiyorsak, toplamda 68 bayt geçebilirdik, bunlar:
+
++ `0xcdcd77c0`: Yöntem Kimliği. Bu, ASCII imza tabanının (uint32, bool) ASCII biçimindeki Keccak karma değerinin ilk 4 baytı olarak türetilmiştir.
++ `0x00000000000000000000000000000000000000000000000000000000000000000045`: ilk parametre, 32 baytla doldurulmuş bir uint32 değeri.
++ `0x000000000000000000000000000000000000000000000000000000000000000001`: ikinci parametre - gerçek boolean, 32 bayta dolgulu
+
+Toplamda:
+
+`0xcdcd77c000000000000000000000000000000000000000000000000000000000000000450000000000000000000000000000000000000000000000000000000000000001`
+Tek bir bool döndürür. Örneğin, false döndürürse, çıktısı tek baytlık `0x0000000000000000000000000000000000000000000000000000000000000000,` tek bir bool olur.
+
+Eğer ["abc", "def"] argümanını içeren bir bar çağırmak istesek, toplamda 68 bayt geçerek ayrılırdık:
+
+`0xfce353f6`: Yöntem Kimliği. Bu, imza çubuğundan türetilir (`bytes3 [2]`).
+`0x61626300000000000000000000000000000000000000000000000000000000000000:` ilk parametrenin ilk kısmı, "abc" (by-ht) bayt3 değeri.
+`0x64656600000000000000000000000000000000000000000000000000000000000000:` ilk parametrenin ikinci kısmı, bytes3 değeri "def" (sola hizalı).
+Toplamda:
+
+```
+0xfce353f661626300000000000000000000000000000000000000000000000000000000006465660000000000000000000000000000000000000000000000000000000000
+
+```
+
+Sam'ı "dave", true ve [1,2,3] argümanlarıyla çağırmak istesek, toplam 292 byte geçerek ayrılırdık:
+
+`0xa5643bf2`: Yöntem Kimliği. Bu, sam imzasından türetilir (`byte, bool, uint256 []`). Uint'in, uint256 kurallı gösterimi ile değiştirildiğine dikkat edin.
+`0x00000000000000000000000000000000000000000000000000000000000000000060`: İlk parametrenin veri bölümünün konumu (dinamik tür), bağımsız değişkenler bloğunun başından itibaren bayt olarak ölçülür. Bu durumda, 0x60.
+`0x000000000000000000000000000000000000000000000000000000000000000001`: ikinci parametre: boolean true.
+`0x0000000000000000000000000000000000000000000000000000000000000000a0`: bayt cinsinden ölçülen üçüncü parametrenin (dinamik tür) veri bölümünün konumu. Bu durumda, 0xa0.
+`0x000000000000000000000000000000000000000000000000000000000000000004`: ilk argümanın veri bölümü, bu durumda, elemanlardaki bayt dizisinin uzunluğu ile başlar, bu durumda, 4.
+`0x646176650000000000000000000000000000000000000000000000000000000000`: ilk argümanın içeriği: UTF-8 (bu durumda ASCII'ye eşittir) "dave" kodlaması, sağda 32 bayta kadar.
+`0x000000000000000000000000000000000000000000000000000000000000000003`: üçüncü bağımsız değişkenin veri bölümü, bu durumda, elemanlardaki dizinin uzunluğu ile başlar, bu durumda, 3.
+`0x000000000000000000000000000000000000000000000000000000000000000001`: üçüncü parametrenin ilk girişi.
+`0x000000000000000000000000000000000000000000000000000000000000000002`: üçüncü parametrenin ikinci girişi.
+`0x000000000000000000000000000000000000000000000000000000000000000003`: üçüncü parametrenin üçüncü girişi.
+
+Toplamda:
+
+```
+0xa5643bf20000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000464617665000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000003
+
+```
+## Dinamik Türlerin Kullanımı
+
+`F (uint, uint32 [], bytes10, bytes)` imzalı bir fonksiyona yapılan çağrı `(0x123, [0x456, 0x789], "1234567890", "Merhaba, dünya!")` aşağıdaki şekilde kodlanır:
+
+Sha3'ün ilk dört baytını alırız `("f (uint256, uint32 [], bytes10, bytes)")`, yani `0x8be65246`. Sonra dört argümanın hepsinin baş kısımlarını kodladık. `Uint256` ve `bytes10` statik tipleri için bunlar doğrudan geçmek istediğimiz değerlerdir, oysa `uint32 []` ve `byte` dinamik türleri için, ofset değerini bayt cinsinden değer alanının başlangıcından ölçülen veri alanının başlangıcına kullanırız. kodlama (yani, işlev imzasının karmasını içeren ilk dört baytı saymaz). Bunlar:
+
+`0x000000000000000000000000000000000000000000000000000000000000000123` (0x123 32 bayta kadar yastıklı)
+`0x00000000000000000000000000000000000000000000000000000000000000000080` (ikinci parametrenin veri bölümünün başlaması için ofset, 4 * 32 bayt, tam olarak baş bölümünün boyutu)
+`0x31323334353637383930000000000000000000000000000000000000000000000000` ("sağdaki 32 bayta dolgulu" 1234567890 ")
+`0x0000000000000000000000000000000000000000000000000000000000000000e0 `(dördüncü parametrenin veri bölümünün başlangıcına ofset = dördüncü parametrenin veri bölümünün başlangıcına uzaklık = birinci dinamik parametrenin veri bölümünün boyutu = 4 * 32 + 3 * 32 (aşağıya bakın))
+Bundan sonra, ilk dinamik argümanın `[0x456, 0x789]` veri kısmı şöyledir:
+
+`0x000000000000000000000000000000000000000000000000000000000000000002` (dizinin öğe sayısı, 2)
+`0x000000000000000000000000000000000000000000000000000000000000000456` (ilk öğe)
+`0x000000000000000000000000000000000000000000000000000000000000000789` (ikinci öğe)
+Son olarak, `"Merhaba, dünya!"` Adlı ikinci dinamik argümanın veri bölümünü kodladık:
+
+`0x00000000000000000000000000000000000000000000000000000000000000000d` (öğe sayısı (bu durumda bayt): 13)
+`0x48656c6c6f2c20776f726c64210000000000000000000000000000000000000000` ("Merhaba, dünya!" Sağda 32 bayt dolgulu)
+
+Hep birlikte, kodlama (işlev seçiciden sonra yeni satır ve netlik için her 32 bayt):
+
+```
+  0x8be65246
+  0000000000000000000000000000000000000000000000000000000000000123
+  0000000000000000000000000000000000000000000000000000000000000080
+  3132333435363738393000000000000000000000000000000000000000000000
+  00000000000000000000000000000000000000000000000000000000000000e0
+  0000000000000000000000000000000000000000000000000000000000000002
+  0000000000000000000000000000000000000000000000000000000000000456
+  0000000000000000000000000000000000000000000000000000000000000789
+  000000000000000000000000000000000000000000000000000000000000000d
+  48656c6c6f2c20776f726c642100000000000000000000000000000000000000
+```
+Şimdi de en atomik olandan başlamak üzere `g(uint[][],string[])` imzalı ve `([[1, 2], [3]], ["one", "two", "three"])` değerlerine aynı prensibi uygulayalım.
+
+İlk önce ilk kök dizinin `[[1, 2], [3]]` ilk gömülü dinamik dizisinin `[1, 2]` uzunluğunu ve verilerini kodladık:
+
+`0x000000000000000000000000000000000000000000000000000000000000000002` (ilk dizideki öğelerin sayısı, 2; öğelerin kendileri 1 ve 2'dir)
+`0x000000000000000000000000000000000000000000000000000000000000000001` (ilk öğe)
+`0x000000000000000000000000000000000000000000000000000000000000000002` (ikinci öğe)
+
+Sonra ilk kök dizinin `[[1, 2], [3]]` ikinci gömülü dinamik dizisinin `[3]` uzunluğunu ve verilerini kodladık:
+
+`0x000000000000000000000000000000000000000000000000000000000000000001` (ikinci dizideki öğe sayısı, 1; öğe 3'tür)
+`0x000000000000000000000000000000000000000000000000000000000000000003` (ilk öğe)
+
+Daha sonra, ilgili dinamik dizileri `[1, 2]` ve `[3]` için ofsetleri a ve b bulmamız gerekir. Ofsetleri hesaplamak için birinci kök dizinin `[[1, 2], [3]]` kodlanmış verilerine bir göz atabiliriz.
+```
+0 - a                                                                - offset of [1, 2]
+1 - b                                                                - offset of [3]
+2 - 0000000000000000000000000000000000000000000000000000000000000002 - count for [1, 2]
+3 - 0000000000000000000000000000000000000000000000000000000000000001 - encoding of 1
+4 - 0000000000000000000000000000000000000000000000000000000000000002 - encoding of 2
+5 - 0000000000000000000000000000000000000000000000000000000000000001 - count for [3]
+6 - 0000000000000000000000000000000000000000000000000000000000000003 - encoding of 3
+
+```
+Satır 2 (64 bayt) olan `[1, 2]` dizisinin içeriğinin başlangıcına bir puan öteleme; böylece bir = `0x000000000000000000000000000000000000000000000000000000000000000040`.
+
+Ofset b, çizgi 5 (160 bayt) olan `[3]` dizisinin içeriğinin başlangıcına işaret eder; Böylece b = `0x000000000000000000000000000000000000000000000000000000000000000000a0`.
+
+Sonra ikinci kök dizinin gömülü dizgilerini kodlarız:
+
+`0x000000000000000000000000000000000000000000000000000000000000000003` ("bir" kelimesindeki karakter sayısı)
+`0x6f6e6500000000000000000000000000000000000000000000000000000000000000` ("bir" kelimesinin utf8 gösterimi)
+`0x000000000000000000000000000000000000000000000000000000000000000003` ("iki" kelimesindeki karakter sayısı)
+`0x74776f00000000000000000000000000000000000000000000000000000000000000` ("iki" kelimesinin utf8 gösterimi)
+`0x000000000000000000000000000000000000000000000000000000000000000005` ("üç" kelimesindeki karakter sayısı)
+`0x74687265650000000000000000000000000000000000000000000000000000000000 `("üç" kelimesinin utf8 gösterimi)
+
+İlk kök dizisine paralel olarak, dizgiler dinamik öğeler olduğundan, c, d ve e offsetlerini bulmamız gerekir:
+```
+0 - c                                                                - offset for "one"
+1 - d                                                                - offset for "two"
+2 - e                                                                - offset for "three"
+3 - 0000000000000000000000000000000000000000000000000000000000000003 - count for "one"
+4 - 6f6e650000000000000000000000000000000000000000000000000000000000 - encoding of "one"
+5 - 0000000000000000000000000000000000000000000000000000000000000003 - count for "two"
+6 - 74776f0000000000000000000000000000000000000000000000000000000000 - encoding of "two"
+7 - 0000000000000000000000000000000000000000000000000000000000000005 - count for "three"
+8 - 7468726565000000000000000000000000000000000000000000000000000000 - encoding of "three"
+```
+Ofset c, satır 3 (96 bayt) olan "bir" dizgisinin içeriğinin başlangıcına işaret eder; Böylece c = `0x000000000000000000000000000000000000000000000000000000000000000060`.
+
+Ofset d, 5 satırındaki (160 bayt) "two" dizesinin içeriğinin başlangıcına işaret eder; Böylece d = `0x000000000000000000000000000000000000000000000000000000000000000000a0`.
+
+Ofset e, satır 7 (224 bayt) olan "üç" dizgisinin içeriğinin başlangıcına işaret eder; Böylece e = `0x0000000000000000000000000000000000000000000000000000000000000000e0`.
+
+Kök dizilerinin gömülü elemanlarının kodlamalarının birbirlerine bağlı olmadığına ve g imzalı bir fonksiyon için aynı kodlamalara sahip olduğuna dikkat edin `(string [], uint [] [])`.
+
+Sonra ilk kök dizinin uzunluğunu kodlarız:
+
+`0x000000000000000000000000000000000000000000000000000000000000000002` (ilk kök dizisindeki öğelerin sayısı, 2; öğelerin kendileri `[1, 2]` ve `[3]`)
+Sonra ikinci kök dizinin uzunluğunu kodlarız:
+
+`0x000000000000000000000000000000000000000000000000000000000000000003` (ikinci kök dizisindeki dizelerin sayısı, 3; dizelerin kendileri "bir", "iki" ve "üç")
+
+Sonunda f ve g ofsetlerini ilgili kök dinamik dizileri `[[1, 2], [3]]` ve `["bir", "iki", "üç"]` için buluruz ve parçaları doğru sırayla birleştiririz:
+
+```
+0x2289b18c                                                            - function signature
+ 0 - f                                                                - offset of [[1, 2], [3]]
+ 1 - g                                                                - offset of ["one", "two", "three"]
+ 2 - 0000000000000000000000000000000000000000000000000000000000000002 - count for [[1, 2], [3]]
+ 3 - 0000000000000000000000000000000000000000000000000000000000000040 - offset of [1, 2]
+ 4 - 00000000000000000000000000000000000000000000000000000000000000a0 - offset of [3]
+ 5 - 0000000000000000000000000000000000000000000000000000000000000002 - count for [1, 2]
+ 6 - 0000000000000000000000000000000000000000000000000000000000000001 - encoding of 1
+ 7 - 0000000000000000000000000000000000000000000000000000000000000002 - encoding of 2
+ 8 - 0000000000000000000000000000000000000000000000000000000000000001 - count for [3]
+ 9 - 0000000000000000000000000000000000000000000000000000000000000003 - encoding of 3
+10 - 0000000000000000000000000000000000000000000000000000000000000003 - count for ["one", "two", "three"]
+11 - 0000000000000000000000000000000000000000000000000000000000000060 - offset for "one"
+12 - 00000000000000000000000000000000000000000000000000000000000000a0 - offset for "two"
+13 - 00000000000000000000000000000000000000000000000000000000000000e0 - offset for "three"
+14 - 0000000000000000000000000000000000000000000000000000000000000003 - count for "one"
+15 - 6f6e650000000000000000000000000000000000000000000000000000000000 - encoding of "one"
+16 - 0000000000000000000000000000000000000000000000000000000000000003 - count for "two"
+17 - 74776f0000000000000000000000000000000000000000000000000000000000 - encoding of "two"
+18 - 0000000000000000000000000000000000000000000000000000000000000005 - count for "three"
+19 - 7468726565000000000000000000000000000000000000000000000000000000 - encoding of "three"
+```
+Ofset f, satır 2 (64 bayt) olan `[[1, 2], [3]]` dizisinin içeriğinin başlangıcına işaret eder; Böylece f = `0x000000000000000000000000000000000000000000000000000000000000000040`.
+
+Ofset g, satır 10 (320 bayt) olan `["bir", "iki", "üç"]` dizisinin içeriğinin başlangıcına işaret eder; bu nedenle, g = `0x0000000000000000000000000000000000000000000000000000000000000000140`.
+
+## Olaylar
+
+Olaylar, Ethereum günlüğü / olay izleme protokolünün bir özetidir. Günlük girişleri sözleşmenin adresini, en fazla dört konudan oluşan bir dizi ve bazı isteğe bağlı uzunluklu ikili verileri sağlar. Olaylar, bunu (bir arayüz spesifikasyonuyla birlikte) uygun şekilde yazılmış bir yapı olarak yorumlamak için mevcut fonksiyon ABI'den yararlanır.
+
+Bir olay adı ve olay parametreleri dizisi verildiğinde, bunları iki alt diziye ayırırız: dizine alınmış olanlar ve olmayanlar. Endekslenenler, 3'e kadar sayılabilecekler, olay girişinin Keccak karmasıyla birlikte günlük girişinin konularını oluşturmak için kullanılır. Dizine alınmamış olanlar etkinliğin bayt dizisini oluşturur.
+
+Aslında, bu ABI'yi kullanan bir günlük girişi şöyle tanımlanır:
+
++ `address`: sözleşmenin adresi (özünde Ethereum tarafından sağlanan);
++ `topics [0]`: `keccak (EVENT_NAME + "(" + EVENT_ARGS.map (canonical_type_of) .join (",") + ")")` (`canonical_type_of`, örneğin, indekslenmiş bir argümanın kurallı türünü döndüren bir fonksiyondur. foo, uint256'ya geri dönecekti. Etkinlik isimsiz olarak bildirilirse, `[0]` başlıkları oluşturulmaz;
++ `topics [n]`: `abi_encode (EVENT_INDEXED_ARGS [n - 1])` (`EVENT_INDEXED_ARGS` dizine eklenen `EVENT_ARGS` dizisidir);
++ `data`: `EVENT_NON_INDEXED_ARGS`'ın ABI kodlaması (`EVENT_NON_INDEXED_ARGS`, dizine alınmamış `EVENT_ARGS` dizisidir, + `abi_encode`, yukarıda belirtildiği gibi, bir işlevden yazılan değer dizisini döndürmek için kullanılan ABI kodlama işlevidir).
+
+En fazla 32 bayt olan tüm uzunluk türleri için, EVENT_INDEXED_ARGS dizisi, normal ABI kodlamasında olduğu gibi, doğrudan, dolgulu veya işaret genişletilmiş (işaretli tamsayılar için) ile 32 bayta kadar değer içerir. Ancak, tüm diziler, `string`, `bytes` ve yapılar da dahil olmak üzere tüm "karmaşık" türler veya dinamik uzunluk türleri için, EVENT_INDEXED_ARGS, özel bir yerinde kodlanmış değerden (bkz. Dizine Alınmış Olay Parametrelerinin Kodlanması) Keccak hash değerini içerecektir. doğrudan kodlanmış değer. Bu, uygulamaların dinamik uzunluk türlerinin değerlerini verimli bir şekilde sorgulamasına olanak tanır (kodlanmış değerin karmasını konu olarak ayarlayarak), ancak sorgulanmadıkları indekslenmiş değerlerin kodunu çözemez hale getirir. Dinamik uzunluklu türler için, uygulama geliştiricileri önceden belirlenmiş değerlerin hızlı aranması (bağımsız değişken dizine alınmışsa) ve isteğe bağlı değerlerin okunabilirliği (bağımsız değişkenlerin dizine alınmamasını gerektirir) arasında bir denge kurar. Geliştiriciler bu değişimin üstesinden gelebilir ve aynı değeri elde etmek için (biri endekslenmiş, biri olmayan) iki argümanla olayları tanımlayarak hem etkili arama hem de keyfi okunabilirlik elde edebilir.
+
+## JSON
+
+Bir sözleşmenin arayüzü için JSON formatı bir dizi işlev ve / veya olay açıklaması ile verilir. İşlev açıklaması, şu alanları içeren bir JSON nesnesidir:
+
++ `type`: "function", "constructor" veya "fallback" (adsız "varsayılan" işlev);
++ `name`: işlevin ismi;
++ `inputs`: her biri aşağıdakileri içeren bir nesne dizisi:
+  1. `name`: parametrenin ismi;
+  2. `type`: parametrenin kanonik tipi (daha fazlası aşağıda).
+  3. `components`: Bağlantı tipleri için kullanılır (aşağıda daha fazlası).
++ `outputs`: işlev bir şey döndürmezse, girdilere benzer bir nesne dizisi atlanabilir;
++ `stateMutability`: aşağıdaki değerlerden birine sahip bir dize: saf (blok zincir durumunu okumamak üzere belirtilir), görünüm (blok zincir durumunu değiştirmeyecek şekilde belirtilir), ödenemez (işlev Ether'ü kabul etmez) ve ödenebilir (işlev Ether değerini kabul eder);
++ `payable`: eğer fonksiyon Ether'ı kabul ederse `true`, aksi takdirde `false` olur;
++ `sabit`: işlev saf veya görünüm ise `true`, aksi takdirde `false` olur. "fonksiyon" için varsayılan olarak atlanabilir, aynı şekilde ödenebilir ve sabit, her ikisi de varsayılan `false` olarak atlanabilir.
+
+Yapıcı ve fallback fonksiyonları hiçbir zaman `name` veya `output` içermez. fallback fonksiyonunda de `input` da bulunmaz.
+
+### [Uyarı]()
+
+> `fixed` ve `payable` alanlar kullanımdan kaldırılmıştır ve gelecekte kaldırılacaktır. Bunun yerine, `stateMutability` alanı aynı özellikleri belirlemek için kullanılabilir.
+
+### [Not]()
+
+> Sıfırdan farklı miktarda bir Ether'in `non-payable` işleve gönderilmesi işlemi geri döndürür.
+
+Etkinlik açıklaması, oldukça benzer alanlara sahip bir JSON nesnesidir:
+
++ `type`: her zaman "event"
++ `name`: etkinliğin ismi;
++ `inputs`: her biri aşağıdakileri içeren bir nesne dizisi:
+  1. `name`: parametrenin ismi;
+  2. `type`: parametrenin kanonik tipi (daha fazlası aşağıda).
+  3. `components`: Bağlantı tipleri için kullanılır (aşağıda daha fazlası).
++ `indexed`: alan, günlüğün konu başlığının bir parçasıysa `true`, günlüğün veri bölümlerinden biriyse `false`.
++ `anonymous`: olay adsız olarak bildirildiyse geçerlidir.
+
+Örneğin,
+
+```
+pragma solidity ^0.5.0;
+
+contract Test {
+  constructor() public { b = hex"12345678901234567890123456789012"; }
+  event Event(uint indexed a, bytes32 b);
+  event Event2(uint indexed a, bytes32 b);
+  function foo(uint a) public { emit Event(a, b); }
+  bytes32 b;
+}
+```
+JSON ile sonuçlanır:
+
+```
+[{
+"type":"event",
+"inputs": [{"name":"a","type":"uint256","indexed":true},{"name":"b","type":"bytes32","indexed":false}],
+"name":"Event"
+}, {
+"type":"event",
+"inputs": [{"name":"a","type":"uint256","indexed":true},{"name":"b","type":"bytes32","indexed":false}],
+"name":"Event2"
+}, {
+"type":"function",
+"inputs": [{"name":"a","type":"uint256"}],
+"name":"foo",
+"outputs": []
+}]
+```
+## Bağlantı Tiplerini Kullanma
+
+Bu isimler kasıtlı olarak ABI kodlamasının bir parçası olmamasına rağmen, son kullanıcıya gösterilmesini sağlamak için JSON'a dahil edilmeleri çok mantıklıdır. Yapı aşağıdaki şekilde yuvalanır:
+
+`name`, `type` ve potansiyel olarak `components` sahip bir nesne, yazılmış bir değişkeni açıklar. Kanonik tip, bir tuple tipine ulaşılıncaya ve bu noktaya kadar olan dizge tanımının, tuple kelimesiyle `type` ön ekinde depolanmasına, yani, `[]` ve `[k]` dizilerinin `k` tamsayıları ile takip edilmesine kadar belirlenir. Tuple `component`ları daha sonra dizi tipinde olan ve burada `indexed` olanlara izin verilmemesi dışında en üst seviye nesne ile aynı yapıya sahip olan üye bileşenlerde depolanır.
+
+Örnek olarak, kod
+
+```
+pragma solidity >=0.4.19 <0.6.0;
+pragma experimental ABIEncoderV2;
+
+contract Test {
+  struct S { uint a; uint[] b; T[] c; }
+  struct T { uint x; uint y; }
+  function f(S memory s, T memory t, uint a) public;
+  function g() public returns (S memory s, T memory t, uint a);
+}
+```
+JSON ile sonuçlanır:
+```
+[
+  {
+    "name": "f",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "s",
+        "type": "tuple",
+        "components": [
+          {
+            "name": "a",
+            "type": "uint256"
+          },
+          {
+            "name": "b",
+            "type": "uint256[]"
+          },
+          {
+            "name": "c",
+            "type": "tuple[]",
+            "components": [
+              {
+                "name": "x",
+                "type": "uint256"
+              },
+              {
+                "name": "y",
+                "type": "uint256"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "t",
+        "type": "tuple",
+        "components": [
+          {
+            "name": "x",
+            "type": "uint256"
+          },
+          {
+            "name": "y",
+            "type": "uint256"
+          }
+        ]
+      },
+      {
+        "name": "a",
+        "type": "uint256"
+      }
+    ],
+    "outputs": []
+  }
+]
+```
+## Sıkı Kodlama Modu
+
+Sıkı kodlama modu, yukarıdaki resmi spesifikasyonda tanımlandığı gibi tamamen aynı kodlamaya yol açan moddur. Bu, ofsetlerin mümkün olduğu kadar küçük olması gerektiği halde veri alanlarında örtüşmeler oluşturmaz ve bu nedenle boşluklara izin verilmez.
+
+Genellikle, ABI kod çözücüler sadece ofset işaretleyicileri izleyerek basit bir şekilde yazılır, ancak bazı kod çözücüler sıkı modu zorlayabilir. Solidity ABI kod çözücü şu anda katı modu zorlamaz, ancak kodlayıcı her zaman katı modda veri oluşturur.
+
+## Standart Dışı Paketlenmiş Mod
+
+`Abi.encodePacked ()` aracılığıyla, Solidity standart olmayan bir paketlenmiş modu şu koşullar altında destekler:
+
++ 32 bayttan daha az yer işgal eden türler, işaretsiz ve paketlenmemiş
++ Dinamik tipler yerinde ve uzunluk olmadan kodlanmış
++ dizi öğeleri paketli, ancak yine de yerinde kodlanmış
+
+Ayrıca, iç içe dizilerin yanı sıra yapılar da desteklenmez.
+
+Örnek olarak, `int16(-1), bytes1(0x42), uint16(0x03), string("Hello, world!")` Kodlaması şöyle sonuçlanır:
+```
+0xffff42000348656c6c6f2c20776f726c6421
+  ^^^^                                 int16(-1)
+      ^^                               bytes1(0x42)
+        ^^^^                           uint16(0x03)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^ string("Hello, world!") without a length field
+
+```
+## Daha Spesifik Olarak:
+
+Kodlama sırasında her şey yerinde kodlanır. Bu, ABI kodlamasında olduğu gibi head ve tail arasında bir ayrım olmadığı ve bir dizinin uzunluğunun kodlanmadığı anlamına gelir.
+
+`Abi.encodePacked` öğesinin doğrudan argümanları, diziler olmadıkça (veya `string` veya `bytes`), doldurmadan kodlanır.
+
+Bir dizinin kodlaması, elemanlarının kodlamasının dolgu ile birleştirilmesidir.
+
+`String`, `bytes` veya `uint[]` gibi dinamik boyutlu türler, uzunluk alanları olmadan kodlanır.
+
+`String` veya `bytes` kodlanması, bir dizinin veya yapının parçası olmadıkça, sonunda bir doldurma uygulamaz (daha sonra 32 baytın katlarına doldurulur).
+
+Genel olarak, kodlama, eksik uzunluk alanından dolayı, dinamik olarak iki boyutta eleman bulunduğunda belirsizdir.
+
+Dolgu gerekirse, açık tip dönüşümler kullanılabilir: `abi.encodePacked (uint16 (0x12)) == hex "0012"`.
+
+Paketlenmiş kodlama işlevler çağrılırken kullanılmadığından, işlev seçiciyi hazırlamak için özel bir destek yoktur. Kodlama belirsiz olduğundan, kod çözme işlevi yoktur.
+
+Eğer `keccak256 (abi.encodePacked (a, b))` kullanıyorsanız ve hem `a` hem de `b` dinamik tiplerse, karma değerinde çarpışmalar yapmak için a ve b parçalarını hareket ettirmek kolaydır. Daha spesifik olarak, `abi.encodePacked ("a", "bc") == abi.encodePacked ("ab", "c")`. İmzalar, kimlik doğrulama veya veri bütünlüğü için `abi.encodePacked` kullanıyorsanız, her zaman aynı türleri kullandığınızdan ve bunların çoğunun dinamik olduğundan emin olun. Zorlayıcı bir neden olmadığı sürece, `abi.encode` tercih edilmelidir.
+
+## Endekslenmiş Olay Parametrelerinin Kodlanması
+
+Değer türü olmayan, yani diziler ve yapılar dizine alınmış olay parametreleri doğrudan saklanmaz, ancak bunun yerine bir kodlamada bir `keccak256-hash` depolanır. Bu kodlama aşağıdaki gibi tanımlanır:
+
++ Bir bayt ve dize değerinin kodlanması, herhangi bir dolgu veya uzunluk öneki olmadan sadece dize içeriğidir.
++ Bir yapının kodlaması, her zaman 32 baytın (hatta `bytes` ve `string`) bir çoğuna dolgulu, üyelerinin kodlamasının birleştirilmesidir.
++ Bir dizinin kodlaması (hem dinamik hem de statik olarak boyutlandırılmış), her zaman 32 baytın (hatta `bytes` ve `string`) bir çoğuna dolgulu olan ve herhangi bir uzunluk önekine sahip olmayan, kodlama öğelerinin birleştirilmesi
+
+Yukarıdakilerde, her zamanki gibi negatif bir sayı, işaret uzantısıyla doldurulur ve sıfır doldurmaz. `uintNN / intNN`, solda doldurulurken `baytNN` türleri sağda doldurulur.
+
+### [Uyarı]()
+
+> Bir yapının kodlaması, birden fazla dinamik boyutta dizi içeriyorsa belirsizdir. Bu nedenle, olay verilerini her zaman yeniden kontrol edin ve yalnızca dizine alınmış parametrelere dayanarak arama sonucuna güvenmeyin.
+
+# Yul
+
+Yul (daha önce `JULIA` veya `IULIA` olarak da adlandırılırdı), çeşitli farklı arka uçları derleyebilecek bir ara dildir (`EVM 1.0, EVM 1.5 ve eWASM` planlanmaktadır). Bu nedenle, üç platformun da kullanılabilir bir ortak paydası olacak şekilde tasarlanmıştır. Halihazırda “satır içi montaj” için zaten kullanılabilir, ve Solidity derleyicisinin gelecekteki sürümleri Yul'u orta dil olarak kullanacaktır. Yul için üst düzey optimizasyon aşamaları oluşturmak da kolaydır.
+
+### [Not]()
+
+> “Satır içi montaj” için kullanılan aroma tiplere sahip değildir (her şey u256'dır) ve yerleşik işlevler, EVM işlem kodlarıyla aynıdır. Lütfen ayrıntılar için satır içi derleme belgelerine başvurunuz.
+
+Yul'un temel bileşenleri `functions`, `blocks`, `variables`, `constants`, `loops` için, `if` ifadeleri, anahtar ifadeleri, ifadeler ve değişkenlere atamalardır.
+
+Yul yazılır, hem değişkenler hem de değişmezler postfix notasyonu olan türü belirtmelidir. Desteklenen türler `bool, u8, s8, u32, s32, u64, s64, u128, s128, u256 ve s256`'dır.
+
+Yul kendi içinde operatörler bile sağlamıyor. EVM hedeflenmişse, opcodlar yerleşik fonksiyonlar olarak mevcut olacaktır, ancak arka uç değişirse yeniden uygulanmak durumundadır. Zorunlu yerleşik fonksiyonların bir listesi için aşağıdaki bölüme bakınız.
+
+Aşağıdaki örnek program, EVM'nin `mul`, `div` ve `mod` kodlarını doğal olarak veya fonksiyon olarak kullanılabileceğini ve üstelik hesapladığını varsaymaktadır.
+
+```
+{
+    function power(base:u256, exponent:u256) -> result:u256
+    {
+        switch exponent
+        case 0:u256 { result := 1:u256 }
+        case 1:u256 { result := base }
+        default
+        {
+            result := power(mul(base, base), div(exponent, 2:u256))
+            switch mod(exponent, 2:u256)
+                case 1:u256 { result := mul(base, result) }
+        }
+    }
+}
+```
+Aynı işlevi yinelemek yerine bir `for` döngüsü kullanarak da uygulamak mümkündür. Burada, EVM'nin lt (daha küçük) ve `add` kodlarına ihtiyacımız var.
+
+## Yul şartname
+
+Bu bölümde Yul kodu açıklanmaktadır. Genellikle aşağıdaki bölümde açıklanan bir Yul nesnesinin içine yerleştirilir.
+
+Dil Bilgisi:
+
+```
+Block = '{' Statement* '}'
+Statement =
+    Block |
+    FunctionDefinition |
+    VariableDeclaration |
+    Assignment |
+    If |
+    Expression |
+    Switch |
+    ForLoop |
+    BreakContinue
+FunctionDefinition =
+    'function' Identifier '(' TypedIdentifierList? ')'
+    ( '->' TypedIdentifierList )? Block
+VariableDeclaration =
+    'let' TypedIdentifierList ( ':=' Expression )?
+Assignment =
+    IdentifierList ':=' Expression
+Expression =
+    FunctionCall | Identifier | Literal
+If =
+    'if' Expression Block
+Switch =
+    'switch' Expression ( Case+ Default? | Default )
+Case =
+    'case' Literal Block
+Default =
+    'default' Block
+ForLoop =
+    'for' Block Expression Block Block
+BreakContinue =
+    'break' | 'continue'
+FunctionCall =
+    Identifier '(' ( Expression ( ',' Expression )* )? ')'
+Identifier = [a-zA-Z_$] [a-zA-Z_$0-9]*
+IdentifierList = Identifier ( ',' Identifier)*
+TypeName = Identifier | BuiltinTypeName
+BuiltinTypeName = 'bool' | [us] ( '8' | '32' | '64' | '128' | '256' )
+TypedIdentifierList = Identifier ':' TypeName ( ',' Identifier ':' TypeName )*
+Literal =
+    (NumberLiteral | StringLiteral | HexLiteral | TrueLiteral | FalseLiteral) ':' TypeName
+NumberLiteral = HexNumber | DecimalNumber
+HexLiteral = 'hex' ('"' ([0-9a-fA-F]{2})* '"' | '\'' ([0-9a-fA-F]{2})* '\'')
+StringLiteral = '"' ([^"\r\n\\] | '\\' .)* '"'
+TrueLiteral = 'true'
+FalseLiteral = 'false'
+HexNumber = '0x' [0-9a-fA-F]+
+DecimalNumber = [0-9]+
+```
+
+### Dilbilgisi Kısıtlamaları
+
+Anahtarların en az bir duruma sahip gerekir (varsayılan durum dahil). İfadenin tüm olası değerleri ele alındığında, varsayılan bir duruma izin verilmemelidir (yani hem gerçek hem de yanlış bir duruma sahip olan bir bool ifadesine sahip bir anahtar, varsayılan bir duruma izin vermemelidir). Tüm vaka değerlerinin aynı tip olması gerekir.
+
+Her ifade sıfır veya daha fazla değerle değerlendirilir. Tanımlayıcılar ve değişmezler tam olarak bir değere göre değerlendirilir ve işlev çağrıları, çağrılan işlevin dönüş değerlerine eşit bir dizi değere göre değerlendirilir.
+
+Değişken bildirimlerinde ve ödevlerinde, sağ taraftaki ifade (varsa), sol taraftaki değişken sayısına eşit bir dizi değeri değerlendirmek zorundadır. Bu, birden fazla değeri değerlendiren bir ifadeye izin verilen tek durumdur.
+
+Aynı zamanda ifadeler olan ifadeler (örneğin, blok düzeyinde) sıfır değerlerini değerlendirmek zorundadır.
+
+Diğer tüm durumlarda, ifadelerin tam olarak bir değerle değerlendirilmesi gerekir.
+
+`continue` ve `break` ifadeleri yalnızca döngü gövdelerinin içinde kullanılabilir ve döngü ile aynı işlevde olmalıdır (veya her ikisi de en üst düzeyde olmalıdır). `For-loop`'un koşul kısmı, tam olarak bir değerle değerlendirilmelidir.
+
+Değişmezler türlerinden daha büyük olamaz. Tanımlanan en büyük tür 256 bit genişliğindedir.
+
+## Kapsam Belirleme Kuralları
+
+Yul'daki kapsamlar Bloklara bağlıdır (istisnalar fonksiyonlar ve aşağıda açıklandığı gibi `for` döngüsü) ve tüm beyanlar (`FunctionDefinition`, `VariableDeclaration`) bu kapsamlara yeni tanımlayıcılar getirir.
+
+Tanımlayıcılar, tanımlandıkları blokta görünür (tüm alt düğümler ve alt bloklar dahil). İstisna olarak, for döngüsünün “ilk” bölümünde tanımlanan tanımlayıcılar (ilk blok) for döngüsünün diğer tüm bölümlerinde (ancak döngünün dışında değil) görünür. For döngüsünün diğer kısımlarında bildirilen tanımlayıcılar, düzenli sözdizimsel kapsam kurallarına uyar. Fonksiyonların parametreleri ve dönüş parametreleri, fonksiyon gövdesinde görülebilir ve isimleri üst üste gelemez.
+
+Değişkenler yalnızca bildirimlerinden sonra referans alınabilir. Özellikle, değişkenler kendi değişken bildirimlerinin sağ tarafında referans gösterilemez. İşlevler, bildirilmeden önce zaten görülebilir (eğer görünürlerse).
+
+Gölgelendirme işlemine izin verilmez, başka bir deyişle, aynı ada sahip başka bir tanımlayıcının da erişilebilir olmadığı bir noktada tanımlayıcı tanımlayamazsınız.
+
+İşlevlerin içinde, bu işlevin dışında bildirilen bir değişkene erişmek mümkün değildir.
+
+## Resmi Özellikleri
+
+AST'nin çeşitli düğümlerinde aşırı yüklenmiş bir E değerlendirme fonksiyonu sağlayarak, resmi olarak Yul'u belirliyoruz. Herhangi bir fonksiyonun yan etkileri olabilir, bu nedenle E iki durum nesnesini ve AST düğümünü alır ve iki yeni durum nesnesini ve değişken sayıda başka değerleri döndürür. İki durum nesnesi, genel durum nesnesidir (EVM bağlamında blok zincirinin hafızası, depolanması ve durumu) ve yerel durum nesnesi (yerel değişkenlerin durumu, yani EVM'deki yığının bir bölümü) . AST düğümü bir ifade ise, E iki durum nesnesini ve break ve devam ifadeleri için kullanılan “mod” u verir. AST düğümü bir ifade ise, E iki durum nesnesini ve ifadenin değerlendirdiği kadar çok değeri döndürür.
+
+Bu yüksek düzey tanım için küresel devletin kesin doğası belirtilmemiş. L yerel durumu,` L [i] = v` olarak belirtilen, `i` değerlerinin `v` değerleriyle eşleştirilmesidir.
+
+Bir tanımlayıcı için `v`, tanımlayıcının adı `$v` olsun.
+
+AST düğümleri için yıkıcı bir gösterim kullanacağız.
+
+```
+E(G, L, <{St1, ..., Stn}>: Block) =
+    let G1, L1, mode = E(G, L, St1, ..., Stn)
+    let L2 be a restriction of L1 to the identifiers of L
+    G1, L2, mode
+E(G, L, St1, ..., Stn: Statement) =
+    if n is zero:
+        G, L, regular
+    else:
+        let G1, L1, mode = E(G, L, St1)
+        if mode is regular then
+            E(G1, L1, St2, ..., Stn)
+        otherwise
+            G1, L1, mode
+E(G, L, FunctionDefinition) =
+    G, L, regular
+E(G, L, <let var1, ..., varn := rhs>: VariableDeclaration) =
+    E(G, L, <var1, ..., varn := rhs>: Assignment)
+E(G, L, <let var1, ..., varn>: VariableDeclaration) =
+    let L1 be a copy of L where L1[$vari] = 0 for i = 1, ..., n
+    G, L1, regular
+E(G, L, <var1, ..., varn := rhs>: Assignment) =
+    let G1, L1, v1, ..., vn = E(G, L, rhs)
+    let L2 be a copy of L1 where L2[$vari] = vi for i = 1, ..., n
+    G, L2, regular
+E(G, L, <for { i1, ..., in } condition post body>: ForLoop) =
+    if n >= 1:
+        let G1, L1, mode = E(G, L, i1, ..., in)
+        // mode has to be regular due to the syntactic restrictions
+        let G2, L2, mode = E(G1, L1, for {} condition post body)
+        // mode has to be regular due to the syntactic restrictions
+        let L3 be the restriction of L2 to only variables of L
+        G2, L3, regular
+    else:
+        let G1, L1, v = E(G, L, condition)
+        if v is false:
+            G1, L1, regular
+        else:
+            let G2, L2, mode = E(G1, L, body)
+            if mode is break:
+                G2, L2, regular
+            else:
+                G3, L3, mode = E(G2, L2, post)
+                E(G3, L3, for {} condition post body)
+E(G, L, break: BreakContinue) =
+    G, L, break
+E(G, L, continue: BreakContinue) =
+    G, L, continue
+E(G, L, <if condition body>: If) =
+    let G0, L0, v = E(G, L, condition)
+    if v is true:
+        E(G0, L0, body)
+    else:
+        G0, L0, regular
+E(G, L, <switch condition case l1:t1 st1 ... case ln:tn stn>: Switch) =
+    E(G, L, switch condition case l1:t1 st1 ... case ln:tn stn default {})
+E(G, L, <switch condition case l1:t1 st1 ... case ln:tn stn default st'>: Switch) =
+    let G0, L0, v = E(G, L, condition)
+    // i = 1 .. n
+    // Evaluate literals, context doesn't matter
+    let _, _, v1 = E(G0, L0, l1)
+    ...
+    let _, _, vn = E(G0, L0, ln)
+    if there exists smallest i such that vi = v:
+        E(G0, L0, sti)
+    else:
+        E(G0, L0, st')
+
+E(G, L, <name>: Identifier) =
+    G, L, L[$name]
+E(G, L, <fname(arg1, ..., argn)>: FunctionCall) =
+    G1, L1, vn = E(G, L, argn)
+    ...
+    G(n-1), L(n-1), v2 = E(G(n-2), L(n-2), arg2)
+    Gn, Ln, v1 = E(G(n-1), L(n-1), arg1)
+    Let <function fname (param1, ..., paramn) -> ret1, ..., retm block>
+    be the function of name $fname visible at the point of the call.
+    Let L' be a new local state such that
+    L'[$parami] = vi and L'[$reti] = 0 for all i.
+    Let G'', L'', mode = E(Gn, L', block)
+    G'', Ln, L''[$ret1], ..., L''[$retm]
+E(G, L, l: HexLiteral) = G, L, hexString(l),
+    where hexString decodes l from hex and left-aligns it into 32 bytes
+E(G, L, l: StringLiteral) = G, L, utf8EncodeLeftAligned(l),
+    where utf8EncodeLeftAligned performs a utf8 encoding of l
+    and aligns it left into 32 bytes
+E(G, L, n: HexNumber) = G, L, hex(n)
+    where hex is the hexadecimal decoding function
+E(G, L, n: DecimalNumber) = G, L, dec(n),
+    where dec is the decimal decoding function
+```
+## Türü Dönüştürme Fonksiyonları
+
+Yul örtük tip dönüşümü desteklememektedir ve bu nedenle açıkça dönüşüm sağlamak için işlevler mevcuttur. Daha büyük bir tipi daha kısa bir tipe dönüştürürken, bir taşma durumunda çalışma zamanı istisnası oluşabilir.
+
+Kırpılan dönüşümler aşağıdaki türler arasında desteklenir:
++ `bool`
++ `u32`
++ `u64`
++ `u256`
++ `s256`
+
+Bunların her biri için prototipin `<input_type>` ile `<output_type> (x: <input_type>) -> y: <output_type> `şeklinde olması, örneğin `u32tobool (x: u32) -> y: bool, u256tou32 (x: u256) -> y: u32` veya `s256tou256 (x: s256) -> y: u256`.
+
+## Backends
+
+Backends veya targets Yul'dan belirli bir bayt koduna çevirmendir. Arka uçların her biri, arka uç adına ekli işlevleri gösterebilir. Önerilen iki arka uç için `evm_` ve `ewasm_` öneklerini ayırdık.
+
++ Backend: "EVM"
+
+EVM hedefi, evm_ öneki ile gösterilen tüm temel EVM kodlarına sahip olacaktır.
+
++ Backend: “EVM 1.5”
+
+TBD
+
++ Backend: "eWASM"
+
+TBD
+
+## Yul Nesnesinin Özellikleri
+
+Yul nesneleri, adlandırılmış kod ve veri bölümlerini gruplamak için kullanılır. ` Datasize` , ` dataoffset`  ve ` datacopy ` fonksiyonları, bu bölümlere kod içinden erişmek için kullanılabilir. Onaltılık dizeler, altıgen kodlamadaki verileri, yerel kodlamadaki normal dizeleri belirtmek için kullanılabilir. Kod için, veri kopya birleştirilmiş ikili gösterime erişecektir.
+
+Dilbilgisi:
+```
+Object = 'object' StringLiteral '{' Code ( Object | Data )* '}'
+Code = 'code' Block
+Data = 'data' StringLiteral ( HexLiteral | StringLiteral )
+HexLiteral = 'hex' ('"' ([0-9a-fA-F]{2})* '"' | '\'' ([0-9a-fA-F]{2})* '\'')
+StringLiteral = '"' ([^"\r\n\\] | '\\' .)* '"'
+
+```
+Yukarıdaki Blok, önceki bölümde açıklanan Yul kodu dilbilgisindeki Blok anlamına gelir.
+
+Örnek bir Yul Nesnesi aşağıda gösterilmiştir:
+
+```
+// Code consists of a single object. A single "code" node is the code of the object.
+// Every (other) named object or data section is serialized and
+// made accessible to the special built-in functions datacopy / dataoffset / datasize
+// Access to nested objects can be performed by joining the names using ``.``.
+// The current object and sub-objects and data items inside the current object
+// are in scope without nested access.
+object "Contract1" {
+    code {
+        // first create "runtime.Contract2"
+        let size = datasize("runtime.Contract2")
+        let offset = allocate(size)
+        // This will turn into a memory->memory copy for eWASM and
+        // a codecopy for EVM
+        datacopy(offset, dataoffset("runtime.Contract2"), size)
+        // constructor parameter is a single number 0x1234
+        mstore(add(offset, size), 0x1234)
+        create(offset, add(size, 32))
+
+        // now return the runtime object (this is
+        // constructor code)
+        size := datasize("runtime")
+        offset := allocate(size)
+        // This will turn into a memory->memory copy for eWASM and
+        // a codecopy for EVM
+        datacopy(offset, dataoffset("runtime"), size)
+        return(offset, size)
+    }
+
+    data "Table2" hex"4123"
+
+    object "runtime" {
+        code {
+            // runtime code
+
+            let size = datasize("Contract2")
+            let offset = allocate(size)
+            // This will turn into a memory->memory copy for eWASM and
+            // a codecopy for EVM
+            datacopy(offset, dataoffset("Contract2"), size)
+            // constructor parameter is a single number 0x1234
+            mstore(add(offset, size), 0x1234)
+            create(offset, add(size, 32))
+        }
+
+        // Embedded object. Use case is that the outside is a factory contract,
+        // and Contract2 is the code to be created by the factory
+        object "Contract2" {
+            code {
+                // code here ...
+            }
+
+            object "runtime" {
+                code {
+                    // code here ...
+                }
+             }
+
+             data "Table1" hex"4123"
+        }
+    }
+}
+
+```
+## Stil rehberi
+
+## Giriş
+
+Bu rehber, Solidity kodu yazmak için kodlama kuralları sağlamayı amaçlamaktadır. Bu rehber, yararlı sözleşmeler bulunan ve eski sözleşmelerin kullanılmadığı ve zaman içinde değişecek olan, gelişen bir belge olarak düşünülmelidir.
+
+Birçok proje kendi stil rehberlerini uygulayacaktır. Uyuşmazlık durumunda, projeye özgü stil rehberleri önceliklidir.
+
+Bu stil rehberindeki yapı ve önerilerin çoğu python’un pep8 stil rehberinden alınmıştır.
+
+Bu kılavuzun amacı, Solidity kodu yazmanın doğru yolu ya da en iyi yolu olmamaktır. Bu kılavuzun amacı tutarlılıktır. Python’un pep8’inden bir alıntı bu kavramı iyi bir şekilde yakalar.
+
+> Bir stil rehberi tutarlılık ile ilgilidir. Bu stil rehberi ile tutarlılık önemlidir. Bir projedeki tutarlılık daha da önemlidir. Bir modül veya fonksiyon içindeki tutarlılık en önemlisidir. Fakat en önemlisi: ne zaman tutarsız olunacağını bilin - bazen stil rehberi sadece geçerli değildir. Şüphe durumunda, en iyi kararınızı kullanın. Diğer örneklere bakın ve neyin en iyi göründüğüne karar verin. Ve sormakta tereddüt etmeyin!
+
+## Kod Düzeni
+
+### Girinti
+
+Girinti seviyesi başına 4 boşluk kullanın.
+
+### Sekmeler veya Boşluklar
+
+Boşluklar tercih edilen girinti yöntemidir.
+
+Karışım sekmeleri ve boşluklardan kaçınılmalıdır.
+
+### Boş Satırlar
+Solidity kaynağında iki boş satırla çevreleyen üst düzey bildirimler.
+
+Evet:
+```
+pragma solidity >=0.4.0 <0.6.0;
+
+contract A {
+    // ...
+}
 
 
+contract B {
+    // ...
+}
+
+
+contract C {
+    // ...
+}
+```
+Hayır:
+```
+pragma solidity >=0.4.0 <0.6.0;
+
+contract A {
+    // ...
+}
+contract B {
+    // ...
+}
+
+contract C {
+    // ...
+}
+```
+Bir sözleşmenin içinde surround fonksiyon bildirimleri tek bir boş satır ile belirtilir.
+
+İlişkili tek gömlek grupları (örneğin, soyut sözleşme için saplama işlevleri gibi) arasında boş satırlar bırakılabilir.
+
+Evet:
+
+```
+pragma solidity >=0.4.0 <0.6.0;
+
+contract A {
+    function spam() public pure;
+    function ham() public pure;
+}
+
+
+contract B is A {
+    function spam() public pure {
+        // ...
+    }
+
+    function ham() public pure {
+        // ...
+    }
+}
+```
+
+Hayır:
+
+```
+pragma solidity >=0.4.0 <0.6.0;
+
+contract A {
+    function spam() public pure {
+        // ...
+    }
+    function ham() public pure {
+        // ...
+    }
+}
+```
+Maksimum Dize Uzunluğu
+
+[PEP 8 önerisine] göre satırları maksimum 79 (veya 99) karakterde tutmak, okuyucuların kodu kolayca ayrıştırmasına yardımcı olur.
+
+Sarılı çizgiler aşağıdaki kurallara uygun olmalıdır.
+
++ İlk argüman açılış parantezine eklenmemelidir.
++ Bir ve bir tane girinti kullanılmalıdır.
++ Her argüman kendi çizgisine düşmelidir.
++ Sonlandırma elemanı,`);`, son satıra kendi başına yerleştirilmelidir.
+
+Fonksiyon Çağrıları
+
+Evet:
+```
+thisFunctionCallIsReallyLong(
+    longArgument1,
+    longArgument2,
+    longArgument3
+);
+```
+Hayır:
+```
+thisFunctionCallIsReallyLong(longArgument1,
+                              longArgument2,
+                              longArgument3
+);
+
+thisFunctionCallIsReallyLong(longArgument1,
+    longArgument2,
+    longArgument3
+);
+
+thisFunctionCallIsReallyLong(
+    longArgument1, longArgument2,
+    longArgument3
+);
+
+thisFunctionCallIsReallyLong(
+longArgument1,
+longArgument2,
+longArgument3
+);
+
+thisFunctionCallIsReallyLong(
+    longArgument1,
+    longArgument2,
+    longArgument3);
+```
+
+Ödev İfadeleri
+
+Evet:
+```
+thisIsALongNestedMapping[being][set][to_some_value] = someFunction(
+    argument1,
+    argument2,
+    argument3,
+    argument4
+);
+
+```
+Hayır:
+```
+thisIsALongNestedMapping[being][set][to_some_value] = someFunction(argument1,
+                                                                   argument2,
+                                                                   argument3,
+                                                                   argument4);
+```
+Olay Tanımları ve Olay Yayıcılar
+
+Evet:
+
+```
+event LongAndLotsOfArgs(
+    address sender,
+    address recipient,
+    uint256 publicKey,
+    uint256 amount,
+    bytes32[] options
+);
+
+LongAndLotsOfArgs(
+    sender,
+    recipient,
+    publicKey,
+    amount,
+    options
+);
+```
+Hayır:
+
+```
+event LongAndLotsOfArgs(address sender,
+                        address recipient,
+                        uint256 publicKey,
+                        uint256 amount,
+                        bytes32[] options);
+
+LongAndLotsOfArgs(sender,
+                  recipient,
+                  publicKey,
+                  amount,
+                  options);
+
+```
+## Kaynak Dosya Kodlaması
+UTF-8 veya ASCII kodlaması tercih edilir.
+
+### İçe Aktarmalar
+
+İçe aktarma ifadeleri her zaman dosyanın üstüne yerleştirilmelidir.
+
+Evet:
+```
+pragma solidity >=0.4.0 <0.6.0;
+
+import "./Owned.sol";
+
+contract A {
+    // ...
+}
+
+contract B is Owned {
+    // ...
+}
+
+```
+Hayır:
+```
+pragma solidity >=0.4.0 <0.6.0;
+
+contract A {
+    // ...
+}
+
+
+import "./Owned.sol";
+
+
+contract B is Owned {
+    // ...
+}
+```
+## Fonksiyon Sırası
+
+Sıralama, okuyucuların hangi işlevleri çağırabileceklerini belirlemelerine ve yapıcı ve geri dönüş tanımlarını daha kolay bulmasına yardımcı olur.
+
+İşlevler görünürlüklerine göre gruplandırılmalı ve sıralanmalıdır:
+
++ Constructor
++ Fallback (varsa)
++ External
++ Public
++ Internal
++ Private
+
+Gruplama içinde, `view` ve `pure` fonksiyonlarını en son konuma getirin.
+
+Evet:
+```
+pragma solidity >=0.4.0 <0.6.0;
+
+contract A {
+    constructor() public {
+        // ...
+    }
+
+    function() external {
+        // ...
+    }
+
+    // External functions
+    // ...
+
+    // External functions that are view
+    // ...
+
+    // External functions that are pure
+    // ...
+
+    // Public functions
+    // ...
+
+    // Internal functions
+    // ...
+
+    // Private functions
+    // ...
+}
+```
+Hayır:
+```
+pragma solidity >=0.4.0 <0.6.0;
+
+contract A {
+
+    // External functions
+    // ...
+
+    function() external {
+        // ...
+    }
+
+    // Private functions
+    // ...
+
+    // Public functions
+    // ...
+
+    constructor() public {
+        // ...
+    }
+
+    // Internal functions
+    // ...
+}
+```
+## İfadelerde Boşluk
+
+Aşağıdaki durumlarda boşluk kullanmaktan kaçının:
+
+Tek satırlı işlev bildirimleri dışında hemen parantez içinde, parantez veya ayraçlar içinde.
+
+Evet:
+```
+spam (jambon [1], Coin ({isim: "jambon"}));
+```
+Hayır:
+```
+spam (jambon [1], Coin ({isim: "jambon"}));
+```
+İstisna:
+```
+işlevi singleLine () public {spam (); }
+```
+Bir virgülten hemen önce, noktalı virgül:
+
+Evet:
+```
+spam işlevi (uint, Coin Coin) genel;
+```
+Hayır:
+```
+spam işlevi (uint, Coin Coin) genel;
+```
+
+Hizalamak üzere bir ödev veya diğer operatör etrafında birden fazla alan:
+
+Evet:
+```
+x = 1;
+y = 2;
+long_variable = 3;
+```
+Hayır:
+```
+x = 1;
+y = 2;
+long_variable = 3;
+```
+
+Yedekleme işlevinde bir boşluk bırakmayın:
+
+Evet:
+```
+function () external {
+     ...
+}
+```
+Hayır:
+```
+function () external {
+     ...
+}
+```
+
+## Kontrol Yapıları
+
+Bir sözleşmede kütüphane, fonksiyon ve yapıları belirten parantezler şunları yapmalıdır:
+
++ Bildiri ile aynı satırda belirtilmeli
++ Deklarasyonun başlangıcı ile aynı girinti seviyesinde kendi hatlarını kapatmalı
++ Açma ayracı tek bir boşlukla devam etmeli
+
+Evet:
+```
+pragma solidity >=0.4.0 <0.6.0;
+
+contract Coin {
+    struct Bank {
+        address owner;
+        uint balance;
+    }
+}
+```
+Hayır:
+```
+pragma solidity >=0.4.0 <0.6.0;
+
+contract Coin
+{
+    struct Bank {
+        address owner;
+        uint balance;
+    }
+}
+```
+Aynı tavsiyeler, eğer varsa, `if`, `while`, `else` gibi kontrol yapıları için de geçerlidir.
+
+Ek olarak, koşullu parantezleri temsil eden parantez bloğu, koşullu parantez bloğu ve açılış ateli arasında tek bir boşluk olması durumunda kontrol yapıları arasında tek bir boşluk olmalıdır.
+
+Evet:
+```
+if (...) {
+    ...
+}
+
+for (...) {
+    ...
+}
+
+```
+Hayır:
+```
+if (...)
+{
+    ...
+}
+
+while(...){
+}
+
+for (...) {
+    ...;}
+```
+Gövdesi tek bir ifade içeren kontrol yapıları için, ifade tek bir satırda bulunuyorsa, parantezlerin çıkarılması tamamdır.
+
+Evet:
+```
+if (x < 10)
+    x += 1;
+```
+Hayır:
+```
+if (x < 10)
+    someArray.push(Coin({
+        name: 'spam',
+        value: 42
+    }));
+    
+```
+Bir başkası olan ya da yan tümce tümce varsa bloklar için, başkasının kapanış ayracı ile aynı satıra yerleştirilmesi gerekir. Bu, diğer blok benzeri yapıların kurallarına kıyasla bir istisnadır.
+
+Evet:
+```
+if (x < 3) {
+    x += 1;
+} else if (x > 7) {
+    x -= 1;
+} else {
+    x = 5;
+}
+
+
+if (x < 3)
+    x += 1;
+else
+    x -= 1;
+```
+Hayır:
+```
+if (x < 3) {
+    x += 1;
+}
+else {
+    x -= 1;
+}
+```
+## Fonksiyon Beyanı
+
+Kısa işlev bildirimleri için, işlev gövdesinin açılma desteğinin işlev bildirimi ile aynı satırda tutulması önerilir.
+
+Kapama parantezi, fonksiyon bildirimi ile aynı girinti seviyesinde olmalıdır.
+
+Açma ayracı önce bir boşluk bırakılmalıdır.
+
+Evet:
+```
+function increment(uint x) public pure returns (uint) {
+    return x + 1;
+}
+
+function increment(uint x) public pure onlyowner returns (uint) {
+    return x + 1;
+}
+```
+Hayır:
+```
+function increment(uint x) public pure returns (uint)
+{
+    return x + 1;
+}
+
+function increment(uint x) public pure returns (uint){
+    return x + 1;
+}
+
+function increment(uint x) public pure returns (uint) {
+    return x + 1;
+    }
+
+function increment(uint x) public pure returns (uint) {
+    return x + 1;}
+```
+Yapıcılar dahil tüm işlevlerin görünürlüğünü açıkça etiketlemelisiniz.
+
+Evet:
+```
+function explicitlyPublic(uint val) public {
+    doSomething();
+}
+```
+Hayır
+```
+function implicitlyPublic(uint val) {
+    doSomething();
+}
+```
+Bir işlevin görünürlük değiştiricisi, herhangi bir özel değiştiriciden önce gelmelidir.
+
+Evet:
+```
+function kill() public onlyowner {
+    selfdestruct(owner);
+}
+```
+Hayır:
+```
+function kill() onlyowner public {
+    selfdestruct(owner);
+}
+```
+Uzun fonksiyon bildirimleri için, her argümanı işlev gövdesiyle aynı girinti düzeyinde kendi satırına bırakmanız önerilir. Kapama parantezi ve açma braketi, fonksiyon bildirimi ile aynı girinti seviyesinde kendi satırlarına yerleştirilmelidir.
+
+Evet:
+```
+function thisFunctionHasLotsOfArguments(
+    address a,
+    address b,
+    address c,
+    address d,
+    address e,
+    address f
+)
+    public
+{
+    doSomething();
+}
+```
+Hayır:
+
+```
+function thisFunctionHasLotsOfArguments(address a, address b, address c,
+    address d, address e, address f) public {
+    doSomething();
+}
+
+function thisFunctionHasLotsOfArguments(address a,
+                                        address b,
+                                        address c,
+                                        address d,
+                                        address e,
+                                        address f) public {
+    doSomething();
+}
+
+function thisFunctionHasLotsOfArguments(
+    address a,
+    address b,
+    address c,
+    address d,
+    address e,
+    address f) public {
+    doSomething();
+}
+
+```
+Uzun bir fonksiyon bildiriminde değiştiriciler varsa, her değiştirici kendi satırına bırakılmalıdır.
+
+Evet:
+```
+function thisFunctionNameIsReallyLong(address x, address y, address z)
+    public
+    onlyowner
+    priced
+    returns (address)
+{
+    doSomething();
+}
+
+function thisFunctionNameIsReallyLong(
+    address x,
+    address y,
+    address z,
+)
+    public
+    onlyowner
+    priced
+    returns (address)
+{
+    doSomething();
+}
+
+```
+Hayır:
+```
+function thisFunctionNameIsReallyLong(address x, address y, address z)
+                                      public
+                                      onlyowner
+                                      priced
+                                      returns (address) {
+    doSomething();
+}
+
+function thisFunctionNameIsReallyLong(address x, address y, address z)
+    public onlyowner priced returns (address)
+{
+    doSomething();
+}
+
+function thisFunctionNameIsReallyLong(address x, address y, address z)
+    public
+    onlyowner
+    priced
+    returns (address) {
+    doSomething();
+}
+```
+Çok satırlı çıktı parametreleri ve return ifadeleri, *Maksimum Satır Uzunluğu* bölümünde bulunan uzun satırları sarmak için önerilen stili kullanmalıdır.
+
+Evet:
+```
+function thisFunctionNameIsReallyLong(
+    address a,
+    address b,
+    address c
+)
+    public
+    returns (
+        address someAddressName,
+        uint256 LongArgument,
+        uint256 Argument
+    )
+{
+    doSomething()
+
+    return (
+        veryLongReturnArg1,
+        veryLongReturnArg2,
+        veryLongReturnArg3
+    );
+}
+
+```
+Hayır:
+```
+function thisFunctionNameIsReallyLong(
+    address a,
+    address b,
+    address c
+)
+    public
+    returns (address someAddressName,
+             uint256 LongArgument,
+             uint256 Argument)
+{
+    doSomething()
+
+    return (veryLongReturnArg1,
+            veryLongReturnArg1,
+            veryLongReturnArg1);
+}
+```
+Temelleri argüman gerektiren kalıtsal sözleşmelerdeki yapıcı işlevler için, işlev bildiriminin okunması uzun veya zorsa, temel yapıcıları değiştiricilerle aynı şekilde yeni satırlara düşürmeniz önerilir.
+
+Evet:
+```
+pragma solidity >=0.4.0 <0.6.0;
+
+// Base contracts just to make this compile
+contract B {
+    constructor(uint) public {
+    }
+}
+contract C {
+    constructor(uint, uint) public {
+    }
+}
+contract D {
+    constructor(uint) public {
+    }
+}
+
+contract A is B, C, D {
+    uint x;
+
+    constructor(uint param1, uint param2, uint param3, uint param4, uint param5)
+        B(param1)
+        C(param2, param3)
+        D(param4)
+        public
+    {
+        // do something with param5
+        x = param5;
+    }
+}
+```
+Hayır:
+```
+pragma solidity >=0.4.0 <0.6.0;
+
+// Base contracts just to make this compile
+contract B {
+    constructor(uint) public {
+    }
+}
+contract C {
+    constructor(uint, uint) public {
+    }
+}
+contract D {
+    constructor(uint) public {
+    }
+}
+
+contract A is B, C, D {
+    uint x;
+
+    constructor(uint param1, uint param2, uint param3, uint param4, uint param5)
+    B(param1)
+    C(param2, param3)
+    D(param4)
+    public
+    {
+        x = param5;
+    }
+}
+
+contract X is B, C, D {
+    uint x;
+
+    constructor(uint param1, uint param2, uint param3, uint param4, uint param5)
+        B(param1)
+        C(param2, param3)
+        D(param4)
+        public {
+        x = param5;
+    }
+}
+```
+Tek bir ifadeyle kısa fonksiyonları bildirirken, bunu tek bir satırda yapmak mümkündür.
+
+İzin verilen:
+```
+function shortFunction() public { doSomething(); }
+
+```
+İşlev bildirimleri için bu yönergelerin okunabilirliği artırması amaçlanmıştır. Yazarlar, bu kılavuzun işlev bildirimleri için tüm olası izinleri kapsamaya çalışmadığı için en iyi kararlarını kullanmalıdır.
+
+## Mappings
+
+Değişken bildirimlerinde, `mapping` ifadesi ve değer arasına boşluk koymayın. Yuvalanmış bir `mapping` anahtar kelimesi ve değer türünün arasına da boşluk koymayın.
+
+Evet:
+```
+mapping(uint => uint) map;
+mapping(address => bool) registeredAddresses;
+mapping(uint => mapping(bool => Data[])) public data;
+mapping(uint => mapping(uint => s)) data;
+```
+Hayır:
+```
+mapping (uint => uint) map;
+mapping( address => bool ) registeredAddresses;
+mapping (uint => mapping (bool => Data[])) public data;
+mapping(uint => mapping (uint => s)) data;
+```
+## Değişken Bildirimler
+
+Dizi değişkenlerinin bildirimleri, tür ile parantez arasında boşluk bırakmamalıdır.
+
+Evet:
+```
+uint [] x;
+```
+Hayır:
+```
+uint [] x;
+```
+## Diğer Öneriler
+
+Dizeler, tek tırnak işaretleri yerine çift tırnak işaretleriyle belirtilmelidir.
+Evet:
+```
+str = "foo";
+str = "Hamlet 'Olmak ya da olmamak ...' diyor";
+```
+Hayır:
+```
+str = 'bar';
+str = '"Kendin ol; diğerleri zaten alınmış." -Oscar Wilde';
+```
+Surround operatörleri, her iki tarafta da tek boşlukla
+Evet:
+```
+x = 3;
+x = 100 / 10;
+x += 3 + 4;
+x |= y && z;
+```
+Hayır:
+```
+x=3;
+x = 100/10;
+x += 3+4;
+x |= y&&z;
+```
+Diğerlerinden daha yüksek önceliğe sahip operatörler, önceliği belirtmek için çevresindeki boşlukları dışarıda bırakabilir. Bu, karmaşık ifade için geliştirilmiş okunabilirlik sağlamak içindir. Bir operatörün her iki tarafında her zaman aynı miktarda boşluk kullanmalısınız.
+
+Evet:
+```
+x = 2**3 + 5;
+x = 2*y + 3*z;
+x = (a+b) * (a-b);
+```
+Hayır:
+```
+x = 2** 3 + 5;
+x = y+z;
+x +=1
+```
+## Düzen Sırası
+
+Sözleşme öğelerini aşağıdaki sırayla düzenleyin:
+
++ Pragma açıklamaları
++ İfadeleri içe aktar
++ Arayüzler
++ Kütüphaneler
++ Sözleşmeler
+
+Her sözleşme, kütüphane veya arayüz içerisinde aşağıdaki sıralamayı kullanın:
+
++ Tip bildirimleri
++ Durum değişkenleri
++ Olaylar
++ Fonksiyonlar
+
+### [Not]()
+
+Olaylarda veya durum değişkenlerinde kullanımlarına yakın türleri bildirmek daha açık olabilir.
+
+## Adlandırma Kuralları
+
+Adlandırma kuralları, yaygın olarak kullanıldığında güçlüdür. Farklı sözleşmelerin kullanılması, aksi takdirde hemen bulunamayacak olan önemli meta bilgilerini aktarabilir.
+
+Burada verilen adlandırma önerileri okunabilirliği arttırmayı amaçlamaktadır ve bu nedenle kuraldan çok şeylerin adları aracılığıyla en fazla bilgiyi aktarmaya çalışmak için kılavuzdurlar.
+
+Son olarak, bir kod temeli içindeki tutarlılık her zaman bu belgede belirtilen herhangi bir sözleşmeden daha öncelikli olmalıdır.
+
+### Stilleri Adlandırma
+
+Karışıklığı önlemek için, farklı adlandırma stillerine atıfta bulunmak için aşağıdaki adlar kullanılacaktır.
+
++ `b` (tek küçük harf)
++ `B` (tek büyük harf)
++ `lowecase`
++ `lower_case_with_underscores`
++ `uppercase`
++ `UPPER_CASE_WITH_UNDERSCORES`
++ `CapitalizedWords` (veya `CapWords`)
++ `mixedCase` (`CapitalizedWords`'den ilk küçük harf karakterine göre değişir!)
++ `Capitalized_Words_With_Underscores`
+
+### [Not]()
+
+> CapWords'de başlangıç harflerini kullanırken, başlangıç harflerinin tüm harflerini büyük harf kullanın. Bu nedenle HTTPServerError, HttpServerError'dan daha iyidir. İlk harfler mixedCase şeklinde kullanıldığında, adın başlangıcıysa, ilk harfleri küçük harf hariç tutmak hariç, ilk harflerin tüm harflerini büyük harfle yazınız. Dolayısıyla xmlHTTPRequest, XMLHTTPRequest'den daha iyidir.
+
+## Kaçınılması Gereken İsimler
+
+`l` - Küçük harf el
+`O` - Büyük harf oh
+`I` - büyük harf göz
+Bunlardan hiçbirini tek harfli değişken adları için kullanmayın. Genellikle bir ve sıfır rakamlarından ayırt edilemez.
+
+## Sözleşme ve Kütüphane İsimleri
+
+Sözleşmeler ve kütüphaneler CapWords stili kullanılarak adlandırılmalıdır. Örnekler: `SimpleToken`, `SmartBank`, `CertificateHashRepository`, `Player`.
+
+Sözleşme ve kütüphane isimleri de dosya isimleri ile uyuşmalıdır.
+
+Bir sözleşme dosyası birden fazla sözleşme ve / veya kitaplık içeriyorsa, dosya adı ana sözleşmeyle eşleşmelidir. Ancak bu önlenebilecekse tavsiye edilmez.
+
+Aşağıdaki örnekte gösterildiği gibi, sözleşme adı Kongre ise ve kütüphane adı Sahip ise, ilişkili dosya adları `Congress.sol` ve `Owned.sol` olmalıdır.
+
+Evet:
+
+```
+pragma solidity >=0.4.0 <0.6.0;
+
+// Owned.sol
+contract Owned {
+     address public owner;
+
+     constructor() public {
+         owner = msg.sender;
+     }
+
+     modifier onlyOwner {
+         require(msg.sender == owner);
+         _;
+     }
+
+     function transferOwnership(address newOwner) public onlyOwner {
+         owner = newOwner;
+     }
+}
+
+// Congress.sol
+import "./Owned.sol";
+
+contract Congress is Owned, TokenRecipient {
+    //...
+}
+```
+Hayır:
+```
+pragma solidity >=0.4.0 <0.6.0;
+
+// owned.sol
+contract owned {
+     address public owner;
+
+     constructor() public {
+         owner = msg.sender;
+     }
+
+     modifier onlyOwner {
+         require(msg.sender == owner);
+         _;
+     }
+
+     function transferOwnership(address newOwner) public onlyOwner {
+         owner = newOwner;
+     }
+}
+
+// Congress.sol
+import "./owned.sol";
+
+contract Congress is owned, tokenRecipient {
+    //...
+}
+```
+## Yapı İsimleri
+
+Yapılar CapWords stili kullanılarak adlandırılmalıdır. Örnekler: `MyCoin, Position, PositionXY`.
+
+## Eylem İsimleri
+
+Eylemler, CapWords stilini kullanarak adlandırılmalıdır. Örnekler: `Para Yatırma, Transfer, Onay, BeforeTransfer, AfterTransfer`.
+
+## Fonksiyon İsimleri
+Yapıcılar dışındaki işlevler mixedCase kullanmalıdır. Örnekler: `getBalance, transfer, verifyOwner, addMember, changeOwner`.
+
+## Fonksiyon Argüman İsimleri
+İşlev argümanları mixedCase kullanmalıdır. Örnekler: `initialSupply, hesap, alıcıAdresi, gönderenAdresi, newOwner`.
+
+Özel bir yapı üzerinde çalışan kütüphane fonksiyonlarını yazarken, yapı ilk argüman olmalı ve daima kendi kendine adlandırılmalıdır.
+
+## Yerel ve Eyalet Değişken İsimleri
+MixedCase kullanın. Örnekler: `totalSupply, leftSupply, dengelerOf, creatorAddress, isPreSale, tokenExchangeRate`.
+
+## Sabitler
+Sabitler, sözcükleri birbirinden ayıran alt harflerle tüm büyük harflerle adlandırılmalıdır. Örnekler: `MAX_BLOCKS, TOKEN_NAME, TOKEN_TICKER, CONTRACT_VERSION`.
+
+## Değiştirici İsimleri
+MixedCase kullanın. Örnekler: `onlyBy, onlyAfter, onlyDuringThePreSale`.
+
+## Sıralamalar
+Enums, basit tip bildirimler tarzında, CapWords stilini kullanarak adlandırılmalıdır. Örnekler: `TokenGroup, Frame, HashStyle, CharacterLocation`.
+
+## Adlandırma Çarpışmalarından Kaçınmak
+
+`single_trailing_underscore_`
+
+Bu kural, istenen ad, yerleşik veya başka bir ayrılmış adın adıyla çakıştığında önerilir.
+
+## Genel Öneriler
+TODO
+
+## NatSpec
+Solidity sözleşmeleri, Ethereum Doğal Dil Belirtimi Formatının temelini oluşturan bir yorum biçimine sahip olabilir.
+
+İşlevlere veya sözleşmelere /// ile başlayan veya / ** ile başlayan ve * / ile biten bir veya birden fazla satırın doxygen işaretini takiben yukarıdaki fonksiyonlara ekleyin.
+
+Örneğin, eklenen yorumlarla basit bir akıllı sözleşmeden yapılan sözleşme aşağıdaki gibi görünüyor:
+```
+pragma solidity >=0.4.0 <0.6.0;
+
+/// @author The Solidity Team
+/// @title A simple storage example
+contract SimpleStorage {
+    uint storedData;
+
+    /// Store `x`.
+    /// @param x the new value to store
+    /// @dev stores the number in the state variable `storedData`
+    function set(uint x) public {
+        storedData = x;
+    }
+
+    /// Return the stored value.
+    /// @dev retrieves the value of the state variable `storedData`
+    /// @return the stored value
+    function get() public view returns (uint) {
+        return storedData;
+    }
+}
+```
+Natspec, bazı özel anlamlara sahip doxygen stil etiketlerini kullanır. Hiçbir etiket kullanılmıyorsa, yorum @ notice için geçerlidir. @Notice etiketi ana NatSpec etiketidir ve hedef kitlesi kaynak kodu hiç görmemiş olan sözleşmenin kullanıcılarıdır, bu nedenle iç detaylar hakkında mümkün olduğunca az varsayım yapmalıdır. Tüm etiketler isteğe bağlıdır.
+
+# Sık Kullanılan Desenler
+
+## Sözleşmelerden Para Çekme
+
+Önerilen para gönderme yöntemlerinden biri, `transfer` yöntemini kullanmaktır. Etkili bir sonuç olarak Ether göndermenin en sezgisel yöntemi doğrudan aktarma çağrısı olsa da, potansiyel bir güvenlik riski oluşturduğu için bu önerilmez. Bu konuda *Güvenlik Hususları* başlığından daha fazla bilgi edinebilirsiniz.
+
+Aşağıda, [King Of The Ether](https://www.kingoftheether.com/thrones/kingoftheether/index.html)'ndan esinlenerek “en zengin” olabilmek için sözleşmeye en fazla parayı göndermek olan bir sözleşmedeki pratikte para çekme modeli örneği verilmiştir.
+
+Aşağıdaki sözleşmede, en zengin olarak kullanıldıysanız, yeni en zengin olmaya devam eden kişinin parasını alacaksınız.
+```
+pragma solidity ^0.5.0;
+
+contract WithdrawalContract {
+    address public richest;
+    uint public mostSent;
+
+    mapping (address => uint) pendingWithdrawals;
+
+    constructor() public payable {
+        richest = msg.sender;
+        mostSent = msg.value;
+    }
+
+    function becomeRichest() public payable returns (bool) {
+        if (msg.value > mostSent) {
+            pendingWithdrawals[richest] += msg.value;
+            richest = msg.sender;
+            mostSent = msg.value;
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    function withdraw() public {
+        uint amount = pendingWithdrawals[msg.sender];
+        // Remember to zero the pending refund before
+        // sending to prevent re-entrancy attacks
+        pendingWithdrawals[msg.sender] = 0;
+        msg.sender.transfer(amount);
+    }
+}
+```
+Bu ise, daha sezgisel gönderme biçiminin aksine kullanılabilir:
+
+```
+pragma solidity ^0.5.0;
+
+contract SendContract {
+    address payable public richest;
+    uint public mostSent;
+
+    constructor() public payable {
+        richest = msg.sender;
+        mostSent = msg.value;
+    }
+
+    function becomeRichest() public payable returns (bool) {
+        if (msg.value > mostSent) {
+            // This line can cause problems (explained below).
+            richest.transfer(msg.value);
+            richest = msg.sender;
+            mostSent = msg.value;
+            return true;
+        } else {
+            return false;
+        }
+    }
+}
+```
+Bu örnekte, bir saldırganın, başarısız olan bir geri dönüş işlevine sahip bir sözleşmenin adresi olmasını (örneğin, `revert()` kullanarak veya yalnızca 2300'den fazla gazı tüketerek) `richest` hale getirerek sözleşmeyi kullanılamaz duruma getirebileceğine dikkat edin. onlara aktarılan maaşlar). Bu şekilde, “zehirlenmiş” sözleşmeye fon sağlamak için `transfer` çağrıldığında, `becomeRichest` başarısız olur ve böylece sözleşmenin sonsuza dek sıkışması ile en çürük oluşur.
+
+Buna karşılık, ilk örnekten “çekilme” desenini kullanırsanız, saldırgan yalnızca sözleşmenin geri kalanının değil, kendi geri çekilmesinin başarısız olmasına neden olabilir.
+
+## Erişimi Kısıtlamak
+
+Erişimi kısıtlamak sözleşmeler için ortak bir kalıptır. Hiçbir insanın veya bilgisayarın işleminizin içeriğini veya sözleşmenizin durumunu okumasını hiçbir zaman kısıtlayamayacağınızı unutmayın. Şifrelemeyi kullanarak biraz zorlaştırabilirsiniz, ancak sözleşmenizin verileri okuması gerekiyorsa, diğerleri de öyle.
+
+Sözleşmenizin durumuna okuma erişimini diğer sözleşmelerle kısıtlayabilirsiniz. Durum değişkenlerinizi genel olarak ilan etmediğiniz sürece bu varsayılandır.
+
+Ayrıca, sözleşmenizin durumunda kimin değişiklik yapabileceğini kısıtlayabilir veya sözleşmenizin işlevlerini çağırabilecekleri belirleyebilirsiniz.
+
+İşlev değiştiricilerin kullanımı bu kısıtlamaları oldukça okunabilir hale getirir.
+
+```
+pragma solidity >=0.4.22 <0.6.0;
+
+contract AccessRestriction {
+    // These will be assigned at the construction
+    // phase, where `msg.sender` is the account
+    // creating this contract.
+    address public owner = msg.sender;
+    uint public creationTime = now;
+
+    // Modifiers can be used to change
+    // the body of a function.
+    // If this modifier is used, it will
+    // prepend a check that only passes
+    // if the function is called from
+    // a certain address.
+    modifier onlyBy(address _account)
+    {
+        require(
+            msg.sender == _account,
+            "Sender not authorized."
+        );
+        // Do not forget the "_;"! It will
+        // be replaced by the actual function
+        // body when the modifier is used.
+        _;
+    }
+
+    /// Make `_newOwner` the new owner of this
+    /// contract.
+    function changeOwner(address _newOwner)
+        public
+        onlyBy(owner)
+    {
+        owner = _newOwner;
+    }
+
+    modifier onlyAfter(uint _time) {
+        require(
+            now >= _time,
+            "Function called too early."
+        );
+        _;
+    }
+
+    /// Erase ownership information.
+    /// May only be called 6 weeks after
+    /// the contract has been created.
+    function disown()
+        public
+        onlyBy(owner)
+        onlyAfter(creationTime + 6 weeks)
+    {
+        delete owner;
+    }
+
+    // This modifier requires a certain
+    // fee being associated with a function call.
+    // If the caller sent too much, he or she is
+    // refunded, but only after the function body.
+    // This was dangerous before Solidity version 0.4.0,
+    // where it was possible to skip the part after `_;`.
+    modifier costs(uint _amount) {
+        require(
+            msg.value >= _amount,
+            "Not enough Ether provided."
+        );
+        _;
+        if (msg.value > _amount)
+            msg.sender.transfer(msg.value - _amount);
+    }
+
+    function forceOwnerChange(address _newOwner)
+        public
+        payable
+        costs(200 ether)
+    {
+        owner = _newOwner;
+        // just some example condition
+        if (uint(owner) & 0 == 1)
+            // This did not refund for Solidity
+            // before version 0.4.0.
+            return;
+        // refund overpaid fees
+    }
+}
+```
+İşlev çağrılarına erişimin kısıtlanabileceği daha özel bir yol bir sonraki örnekte ele alınacaktır.
+
+## Durum Makinesi
+
+Sözleşmeler genellikle bir durum makinesi olarak hareket eder; bu, farklı davranış gösterdikleri veya farklı işlevlerin çağrılabileceği belirli aşamalara sahip oldukları anlamına gelir. Bir işlev çağrısı genellikle bir aşamayı sonlandırır ve sözleşmeyi bir sonraki aşamaya geçirir (özellikle sözleşme modelleri etkileşime girerse). Ayrıca, bazı aşamalara belirli bir zamanda otomatik olarak ulaşılması da yaygındır.
+
+Buna bir örnek, “kör teklifleri kabul etme” aşamasında başlayan, ardından “açık artırma sonucunu belirleme” ile sona eren “teklifleri ortaya çıkarma” aşamasına geçen kör bir açık artırma sözleşmesidir.
+
+İşlev değiştiricileri bu durumda durumları modellemek ve sözleşmenin yanlış kullanılmasına karşı korunmak için kullanılabilir.
+
+**Örnek**
+
+Aşağıdaki örnekte, `atStage`'deki değiştirici, işlevin yalnızca belirli bir aşamada çağrılabilmesini sağlar.
+
+Otomatik zamanlamalı geçişler, tüm fonksiyonlar için kullanılması gereken değiştirici `timeTransitions` tarafından gerçekleştirilir.
+
+### [Not]()
+
+> Değiştirici Sipariş Önemlidir. AtStage, `timedTransitions` ile birleştirildiyse, ikincisinden sonra bahsettiğinizden emin olun, böylece yeni aşama dikkate alınır.
+
+Son olarak, değiştirici işlevinin tamamlandığında değiştirici otomatik olarak bir sonraki aşamaya geçmek için kullanılabilir.
+
+### [Not]()
+
+> *Değiştirici atlanabilir*. Bu sadece 0.4.0 sürümünden önceki Solidity için geçerlidir: Değiştiriciler sadece bir fonksiyon çağrısı kullanarak değil, sadece kod değiştirilerek uygulandığından, eğer fonksiyonun kendisi geri dönüyorsa, geçişince değiştiricisindeki kod atlanabilir. Bunu yapmak istiyorsanız, NextStage'i bu işlevlerden manuel olarak aradığınızdan emin olun. 0.4.0 sürümünden itibaren, işlev açıkça dönse bile değiştirici kod çalışır.
+
+```
+pragma solidity >=0.4.22 <0.6.0;
+
+contract StateMachine {
+    enum Stages {
+        AcceptingBlindedBids,
+        RevealBids,
+        AnotherStage,
+        AreWeDoneYet,
+        Finished
+    }
+
+    // This is the current stage.
+    Stages public stage = Stages.AcceptingBlindedBids;
+
+    uint public creationTime = now;
+
+    modifier atStage(Stages _stage) {
+        require(
+            stage == _stage,
+            "Function cannot be called at this time."
+        );
+        _;
+    }
+
+    function nextStage() internal {
+        stage = Stages(uint(stage) + 1);
+    }
+
+    // Perform timed transitions. Be sure to mention
+    // this modifier first, otherwise the guards
+    // will not take the new stage into account.
+    modifier timedTransitions() {
+        if (stage == Stages.AcceptingBlindedBids &&
+                    now >= creationTime + 10 days)
+            nextStage();
+        if (stage == Stages.RevealBids &&
+                now >= creationTime + 12 days)
+            nextStage();
+        // The other stages transition by transaction
+        _;
+    }
+
+    // Order of the modifiers matters here!
+    function bid()
+        public
+        payable
+        timedTransitions
+        atStage(Stages.AcceptingBlindedBids)
+    {
+        // We will not implement that here
+    }
+
+    function reveal()
+        public
+        timedTransitions
+        atStage(Stages.RevealBids)
+    {
+    }
+
+    // This modifier goes to the next stage
+    // after the function is done.
+    modifier transitionNext()
+    {
+        _;
+        nextStage();
+    }
+
+    function g()
+        public
+        timedTransitions
+        atStage(Stages.AnotherStage)
+        transitionNext
+    {
+    }
+
+    function h()
+        public
+        timedTransitions
+        atStage(Stages.AreWeDoneYet)
+        transitionNext
+    {
+    }
+
+    function i()
+        public
+        timedTransitions
+        atStage(Stages.Finished)
+    {
+    }
+}
+```
+# Bilinen Hataların Listesi
+
+Aşağıda, Solidity derleyicisindeki güvenlikle ilgili bilinen bazı hataların JSON formatlı bir listesini bulabilirsiniz. Dosyanın kendisi Github deposunda barındırılmaktadır. Liste, 0.3.0 sürümüne kadar uzanıyor, sadece listelenmemiş sürümlerde mevcut olduğu bilinen hatalar çıkıyor.
+
+`Bugs_by_version.json` adlı, hangi derleyicinin belirli bir sürümünü etkilediğini görmek için kullanılabilecek başka bir dosya daha var.
+
+Sözleşme kaynağı doğrulama araçları ve ayrıca sözleşmelerle etkileşime giren diğer araçlar, aşağıdaki kriterlere göre bu listeye başvurmalıdır:
+
+Bir sözleşmenin yayınlanmış bir sürüm yerine gecelik bir derleyici sürümüyle derlenmiş olması biraz şüphelidir. Bu liste yayınlanmamış veya gecelik sürümlerin kaydını tutmaz.
+
+Bir sözleşmenin, sözleşmenin oluşturulduğu tarihte en son olmayan bir versiyonla derlenmesi halinde de, biraz şüphelidir.
+
+Diğer sözleşmelerden yaratılan sözleşmeler için, yaratma zincirini bir işleme geri götürmeli ve bu işlemin tarihini yaratma tarihi olarak kullanmalısınız.
+
+Bir sözleşmenin bilinen bir hatayı içeren bir derleyici ile derlenmesi ve sözleşmenin bir düzeltme içeren daha yeni bir derleyici sürümünün yayınlandığı bir zamanda yaratılması çok şüphelidir.
+
+Aşağıdaki bilinen hataların JSON dosyası, aşağıdaki hatalarla birlikte her bir hata için bir nesne dizisidir:
+
+**name**
+Böceğe verilen benzersiz ad
+**summary**
+Böceğin kısa açıklaması
+**description**
+Hatanın ayrıntılı açıklaması
+**link**
+İsteğe bağlı olarak daha ayrıntılı bilgi içeren bir web sitesinin URL'si
+**introduced**
+Hata içeren ilk yayınlanan derleyici sürümü, isteğe bağlı
+**fixed**
+Artık hata içermeyen ilk yayınlanan derleyici sürümü
+**publish**
+Böceğin genel olarak tanındığı tarih, isteğe bağlı
+**severity**
+Böceğin şiddeti: çok düşük, düşük, orta, yüksek. Kontrat testlerinde keşfedilebilirlik, oluşma olasılığı ve istismarlar nedeniyle olası hasar dikkate alınmaktadır.
+**conditions**
+Hatayı tetiklemek için karşılanması gereken şartlar. Şu anda, bu bir boolean value `optimizer` içerebilen bir nesnedir, yani hatayı etkinleştirmek için optimizer'ın açık olması gerektiği anlamına gelir. Hiçbir koşul belirtilmezse, hatanın mevcut olduğunu varsayalım.
+**control**
+Bu alan, akıllı sözleşmenin hatayı içerip içermediğini bildiren farklı kontroller içerir. İlk kontrol tipi, böcek varsa, kaynak koduyla (“kaynak-regex”) eşleştirilmesi gereken Javascript normal ifadeleridir. Eşleşme yoksa, böcek muhtemelen mevcut değildir. Bir eşleşme varsa, böcek mevcut olabilir. Geliştirilmiş doğruluk için kontroller, yorumları çıkarmadan sonra kaynak koda uygulanmalıdır. İkinci kontrol tipi, Sertlik programının kompakt AST'sinde kontrol edilecek modellerdir (“ast-compact-json-path”). Belirtilen arama sorgusu bir JsonPath ifadesidir. AIDS'in en az bir yolu sorguyla eşleşiyorsa, hata muhtemelen mevcuttur.
+```
+[
+    {
+        "name": "ExpExponentCleanup",
+        "summary": "Using the ** operator with an exponent of type shorter than 256 bits can result in unexpected values.",
+        "description": "Higher order bits in the exponent are not properly cleaned before the EXP opcode is applied if the type of the exponent expression is smaller than 256 bits and not smaller than the type of the base. In that case, the result might be larger than expected if the exponent is assumed to lie within the value range of the type. Literal numbers as exponents are unaffected as are exponents or bases of type uint256.",
+        "fixed": "0.4.25",
+        "severity": "medium/high",
+        "check": {"regex-source": "[^/]\\*\\* *[^/0-9 ]"}
+    },
+    {
+        "name": "EventStructWrongData",
+        "summary": "Using structs in events logged wrong data.",
+        "description": "If a struct is used in an event, the address of the struct is logged instead of the actual data.",
+        "introduced": "0.4.17",
+        "fixed": "0.4.25",
+        "severity": "very low",
+        "check": {"ast-compact-json-path": "$..[?(@.nodeType === 'EventDefinition')]..[?(@.nodeType === 'UserDefinedTypeName' && @.typeDescriptions.typeString.startsWith('struct'))]"}
+    },
+    {
+        "name": "NestedArrayFunctionCallDecoder",
+        "summary": "Calling functions that return multi-dimensional fixed-size arrays can result in memory corruption.",
+        "description": "If Solidity code calls a function that returns a multi-dimensional fixed-size array, array elements are incorrectly interpreted as memory pointers and thus can cause memory corruption if the return values are accessed. Calling functions with multi-dimensional fixed-size arrays is unaffected as is returning fixed-size arrays from function calls. The regular expression only checks if such functions are present, not if they are called, which is required for the contract to be affected.",
+        "introduced": "0.1.4",
+        "fixed": "0.4.22",
+        "severity": "medium",
+        "check": {"regex-source": "returns[^;{]*\\[\\s*[^\\] \\t\\r\\n\\v\\f][^\\]]*\\]\\s*\\[\\s*[^\\] \\t\\r\\n\\v\\f][^\\]]*\\][^{;]*[;{]"}
+    },
+    {
+        "name": "OneOfTwoConstructorsSkipped",
+        "summary": "If a contract has both a new-style constructor (using the constructor keyword) and an old-style constructor (a function with the same name as the contract) at the same time, one of them will be ignored.",
+        "description": "If a contract has both a new-style constructor (using the constructor keyword) and an old-style constructor (a function with the same name as the contract) at the same time, one of them will be ignored. There will be a compiler warning about the old-style constructor, so contracts only using new-style constructors are fine.",
+        "introduced": "0.4.22",
+        "fixed": "0.4.23",
+        "severity": "very low"
+    },
+    {
+        "name": "ZeroFunctionSelector",
+        "summary": "It is possible to craft the name of a function such that it is executed instead of the fallback function in very specific circumstances.",
+        "description": "If a function has a selector consisting only of zeros, is payable and part of a contract that does not have a fallback function and at most five external functions in total, this function is called instead of the fallback function if Ether is sent to the contract without data.",
+        "fixed": "0.4.18",
+        "severity": "very low"
+    },
+    {
+        "name": "DelegateCallReturnValue",
+        "summary": "The low-level .delegatecall() does not return the execution outcome, but converts the value returned by the functioned called to a boolean instead.",
+        "description": "The return value of the low-level .delegatecall() function is taken from a position in memory, where the call data or the return data resides. This value is interpreted as a boolean and put onto the stack. This means if the called function returns at least 32 zero bytes, .delegatecall() returns false even if the call was successful.",
+        "introduced": "0.3.0",
+        "fixed": "0.4.15",
+        "severity": "low"
+    },
+    {
+        "name": "ECRecoverMalformedInput",
+        "summary": "The ecrecover() builtin can return garbage for malformed input.",
+        "description": "The ecrecover precompile does not properly signal failure for malformed input (especially in the 'v' argument) and thus the Solidity function can return data that was previously present in the return area in memory.",
+        "fixed": "0.4.14",
+        "severity": "medium"
+    },
+    {
+        "name": "SkipEmptyStringLiteral",
+        "summary": "If \"\" is used in a function call, the following function arguments will not be correctly passed to the function.",
+        "description": "If the empty string literal \"\" is used as an argument in a function call, it is skipped by the encoder. This has the effect that the encoding of all arguments following this is shifted left by 32 bytes and thus the function call data is corrupted.",
+        "fixed": "0.4.12",
+        "severity": "low"
+    },
+    {
+        "name": "ConstantOptimizerSubtraction",
+        "summary": "In some situations, the optimizer replaces certain numbers in the code with routines that compute different numbers.",
+        "description": "The optimizer tries to represent any number in the bytecode by routines that compute them with less gas. For some special numbers, an incorrect routine is generated. This could allow an attacker to e.g. trick victims about a specific amount of ether, or function calls to call different functions (or none at all).",
+        "link": "https://blog.ethereum.org/2017/05/03/solidity-optimizer-bug/",
+        "fixed": "0.4.11",
+        "severity": "low",
+        "conditions": {
+            "optimizer": true
+        }
+    },
+    {
+        "name": "IdentityPrecompileReturnIgnored",
+        "summary": "Failure of the identity precompile was ignored.",
+        "description": "Calls to the identity contract, which is used for copying memory, ignored its return value. On the public chain, calls to the identity precompile can be made in a way that they never fail, but this might be different on private chains.",
+        "severity": "low",
+        "fixed": "0.4.7"
+    },
+    {
+        "name": "OptimizerStateKnowledgeNotResetForJumpdest",
+        "summary": "The optimizer did not properly reset its internal state at jump destinations, which could lead to data corruption.",
+        "description": "The optimizer performs symbolic execution at certain stages. At jump destinations, multiple code paths join and thus it has to compute a common state from the incoming edges. Computing this common state was simplified to just use the empty state, but this implementation was not done properly. This bug can cause data corruption.",
+        "severity": "medium",
+        "introduced": "0.4.5",
+        "fixed": "0.4.6",
+        "conditions": {
+            "optimizer": true
+        }
+    },
+    {
+        "name": "HighOrderByteCleanStorage",
+        "summary": "For short types, the high order bytes were not cleaned properly and could overwrite existing data.",
+        "description": "Types shorter than 32 bytes are packed together into the same 32 byte storage slot, but storage writes always write 32 bytes. For some types, the higher order bytes were not cleaned properly, which made it sometimes possible to overwrite a variable in storage when writing to another one.",
+        "link": "https://blog.ethereum.org/2016/11/01/security-alert-solidity-variables-can-overwritten-storage/",
+        "severity": "high",
+        "introduced": "0.1.6",
+        "fixed": "0.4.4"
+    },
+    {
+        "name": "OptimizerStaleKnowledgeAboutSHA3",
+        "summary": "The optimizer did not properly reset its knowledge about SHA3 operations resulting in some hashes (also used for storage variable positions) not being calculated correctly.",
+        "description": "The optimizer performs symbolic execution in order to save re-evaluating expressions whose value is already known. This knowledge was not properly reset across control flow paths and thus the optimizer sometimes thought that the result of a SHA3 operation is already present on the stack. This could result in data corruption by accessing the wrong storage slot.",
+        "severity": "medium",
+        "fixed": "0.4.3",
+        "conditions": {
+            "optimizer": true
+        }
+    },
+    {
+        "name": "LibrariesNotCallableFromPayableFunctions",
+        "summary": "Library functions threw an exception when called from a call that received Ether.",
+        "description": "Library functions are protected against sending them Ether through a call. Since the DELEGATECALL opcode forwards the information about how much Ether was sent with a call, the library function incorrectly assumed that Ether was sent to the library and threw an exception.",
+        "severity": "low",
+        "introduced": "0.4.0",
+        "fixed": "0.4.2"
+    },
+    {
+        "name": "SendFailsForZeroEther",
+        "summary": "The send function did not provide enough gas to the recipient if no Ether was sent with it.",
+        "description": "The recipient of an Ether transfer automatically receives a certain amount of gas from the EVM to handle the transfer. In the case of a zero-transfer, this gas is not provided which causes the recipient to throw an exception.",
+        "severity": "low",
+        "fixed": "0.4.0"
+    },
+    {
+        "name": "DynamicAllocationInfiniteLoop",
+        "summary": "Dynamic allocation of an empty memory array caused an infinite loop and thus an exception.",
+        "description": "Memory arrays can be created provided a length. If this length is zero, code was generated that did not terminate and thus consumed all gas.",
+        "severity": "low",
+        "fixed": "0.3.6"
+    },
+    {
+        "name": "OptimizerClearStateOnCodePathJoin",
+        "summary": "The optimizer did not properly reset its internal state at jump destinations, which could lead to data corruption.",
+        "description": "The optimizer performs symbolic execution at certain stages. At jump destinations, multiple code paths join and thus it has to compute a common state from the incoming edges. Computing this common state was not done correctly. This bug can cause data corruption, but it is probably quite hard to use for targeted attacks.",
+        "severity": "low",
+        "fixed": "0.3.6",
+        "conditions": {
+            "optimizer": true
+        }
+    },
+    {
+        "name": "CleanBytesHigherOrderBits",
+        "summary": "The higher order bits of short bytesNN types were not cleaned before comparison.",
+        "description": "Two variables of type bytesNN were considered different if their higher order bits, which are not part of the actual value, were different. An attacker might use this to reach seemingly unreachable code paths by providing incorrectly formatted input data.",
+        "severity": "medium/high",
+        "fixed": "0.3.3"
+    },
+    {
+        "name": "ArrayAccessCleanHigherOrderBits",
+        "summary": "Access to array elements for arrays of types with less than 32 bytes did not correctly clean the higher order bits, causing corruption in other array elements.",
+        "description": "Multiple elements of an array of values that are shorter than 17 bytes are packed into the same storage slot. Writing to a single element of such an array did not properly clean the higher order bytes and thus could lead to data corruption.",
+        "severity": "medium/high",
+        "fixed": "0.3.1"
+    },
+    {
+        "name": "AncientCompiler",
+        "summary": "This compiler version is ancient and might contain several undocumented or undiscovered bugs.",
+        "description": "The list of bugs is only kept for compiler versions starting from 0.3.0, so older versions might contain undocumented bugs.",
+        "severity": "high",
+        "fixed": "0.3.0"
+    }
+]
+```
+
 ```
 ```
 ```
 ```
-```
-```
-```
-```
-```
-```
-```
+
+
+
+
 
 
 

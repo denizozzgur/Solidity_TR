@@ -3198,7 +3198,148 @@ Akıllı bir sözleşmede saklanabilecek Ether (veya diğer belirteçler) miktar
 
 ### Küçük ve Modüler Tutun
 
-Sözleşmelerinizi küçük ve kolayca anlaşılabilir tutun. Diğer sözleşmelerdeki veya kütüphanelerdeki ilgisiz işlevsellikten kurtulun. Elbette kaynak kod kalitesi ile ilgili genel tavsiyeler geçerlidir: Yerel değişkenlerin miktarını, işlevlerin uzunluğunu vb. Sınırlayın. İşlevlerinizi belgeleyin, böylece başkalarının niyetinin ne olduğunu ve kodun yaptığından farklı olup olmadığını görebilirsiniz.
+Sözleşmelerinizi küçük ve kolayca anlaşılabilir tutun. Diğer sözleşmelerdeki veya kütüphanelerdeki ilgisiz işlevsellikten kurtulun. Elbette kaynak kod kalitesi ile ilgili genel tavsiyeler geçerlidir: Yerel değişkenlerin miktarını, fonksiyonların uzunluğunu vb. sınırlayın. Fonksiyonlarınızı açıkayın, böylece başkalarının kodunuzu anlamasını kolaylaştırın.
+
+### Kontroller-Etkiler-Etkileşimler Örüntüsünü kullanın
+
+Çoğu fonksiyon ilk önce bazı kontroller gerçekleştirir (fonksiyonu çağıran, aralıktaki argümanlar, yeterince Ether göndermişler mi, kişinin belirteçleri var mı, vs.). Bu kontroller önce yapılmalıdır.
+
+İkinci adım olarak, tüm kontroller geçilirse, mevcut sözleşmenin public değişkenlerinde gereken değişiklikler yapılmalıdır. Diğer sözleşmelerle etkileşim, herhangi bir fonksiyondaki en son adım olmalıdır.
+
+İlk dönemlerde, sözleşmeler bazı etkileri geciktirirdi ve harici işlev çağrılarının hatasız bir durumda dönmesini beklerdi. Bu genellikle yukarıda açıklanan yeniden giriş problemi nedeniyle ciddi bir hataya sebep oluyordu.
+
+Ayrıca, bilinen sözleşmelere yapılan aramaların, bilinmeyen sözleşmelere yapılan aramalara neden olabileceğine dikkat edin, bu nedenle, bu modeli her zaman uygulamak muhtemelen daha iyidir.
+
+### Fail-Safe Mod Kullanın
+
+Sisteminizi tamamen merkezi olmayan hale getirirken, herhangi bir aracı aracı ortadan kaldıracak olsa da, özellikle yeni kod için, başarısızlık durumunda çalışacak bir güvenlik mekanizması dahil etmek iyi bir fikir olabilir:
+
+Akıllı sözleşmenize “Ether sızdı mı?”, “Tokenlerin toplamı sözleşmenin bakiyesine eşit mi?” Gibi bazı otomatik kontroller yapan bir fonksiyon ekleyebilirsiniz. Bunun için fazla gaz kullanamayacağınızı aklınızda bulundurun, bu nedenle burada zincir dışı hesaplamalar için yardıma ihtiyacınız olabilir.
+
+Kendi kendini kontrol başarısız olursa, sözleşme otomatik olarak bir tür “arızaya dayanıklı” moduna geçer, örneğin, özelliklerin çoğunu devre dışı bırakır, kontrolü sabit ve güvenilir bir üçüncü tarafa devreder veya sözleşmeyi basit bir *bana paramı geri ver ”sözleşmesine* dönüştürür.
+
+### Başkalarının Kodunuzu Değerlendirmesi isteyin
+
+Bir kod dosyasını ne kadar çok kişi incelerse, o kadar çok sorun bulunur. İnsanlardan kodunuzu incelemelerini istemek de, kodunuzun anlaşılmasının kolay olup olmadığını anlamak için çapraz kontrol olarak yardımcı olur. Bu iyi akıllı sözleşmeler için çok önemli bir kriterdir.
+
+## Resmi Doğrulama
+
+Resmi doğrulama kullanarak, kaynak kodunuzun belirli bir resmi şartnameyi yerine getirdiğine dair otomatik bir kontrol gerçekleştirmek mümkündür. Şartname hala resmi (kaynak kodunda olduğu gibi), ancak genellikle çok daha basit.
+
+Resmi doğrulamanın kendisinin yalnızca yaptığınız (şartname) ile nasıl yaptığınız (gerçek uygulama) arasındaki farkı anlamanıza yardımcı olabileceğini unutmayın. Şartnamenin istediğiniz olup olmadığını kontrol etmenize ve istenmeyen herhangi bir etkiden kaçırmadığınızı kontrol etmeniz gerekir.
+
+# Kaynaklar
+
+## Genel
+
++ [Ethereum](https://ethereum.org/)
++ [Changelog](https://github.com/ethereum/solidity/blob/develop/Changelog.md)
++ [Kaynak Kodu](https://github.com/ethereum/solidity/)
++ [Ethereum Stackexchange](https://ethereum.stackexchange.com/)
++ [Solidity Kullanıcıları Sohbet](https://gitter.im/ethereum/solidity/)
++ [Compiler Geliştiricileri Sohbet](https://gitter.im/ethereum/solidity-dev/)
+
+## Solidity Entegrasyonları
+
++ Jenerik:
+
+1. [EthFiddle](https://ethfiddle.com/)
+  Tarayıcıdaki Solidity IDE. Solidity kodunuzu yazın ve paylaşın. Sunucu tarafı bileşenleri kullanır.
+2. [Remix](https://remix.ethereum.org/)
+  Sunucu tarafı bileşenleri olmadan tümleşik derleyici ve Solidity çalışma ortamı içeren tarayıcı tabanlı IDE.
+3. [Solium](https://github.com/duaraghav8/Solium/)
+  Solidity'de stil ve güvenlik konularını belirlemek ve çözmek için Linter.
+4.[Solhint](https://github.com/protofire/solhint)
+  Akıllı sözleşme geçerliliği için güvenlik, stil rehberi ve en iyi uygulama kuralları sağlayan Solidity linter.
+5. [Superblocks Lab](https://lab.superblocks.com/) 
+  Tarayıcı tabanlı IDE. Yerleşik tarayıcı tabanlı VM ve Metamask entegrasyonu (Testnet / Mainnet'e bir tıklamayla dağıtım).
+
++ Atom:
+
+1. [Etheratom](https://github.com/0mkara/etheratom)
+  Atom düzenleyicisi için sözdizimi vurgulama, derleme ve çalışma zamanı ortamı (Ek uç ve VM uyumlu) özelliği.
+2. [Atom Solidity Linter](https://atom.io/packages/linter-solidity)
+  Solidity linting sağlayan Atom editörü için eklenti.
+3. [Atom Solium Linter(https://atom.io/packages/linter-solium)
+  Baz olarak Solium kullanan Atom için Yapılandırılabilir Solidty linter.
+
++Eclipse:
+
+1. [YAKINDU Solidity Araçları](https://yakindu.github.io/solidity-ide/)
+  Eclipse tabanlı IDE. Bağlam duyarlı kod tamamlama ve yardım, kod gezinme, sözdizimi renklendirme, yerleşik derleyici, hızlı düzeltmeler ve şablonlar içerir.
+
++Emacs:
+
+1. [Emacs Solidity](https://github.com/ethereum/emacs-solidity/)
+  Emacs editörü için eklenti sözdizimi vurgulama ve derleme hatası raporlama sağlar.
+
++IntelliJ:
+
+1. [IntelliJ IDEA eklentisi](https://plugins.jetbrains.com/plugin/9475-intellij-solidity)
+  IntelliJ IDEA için Solidity eklentisi (ve diğer tüm JetBrains IDE'ler)
+
++Sublime:
+
+1. [SublimeText için Paket - Solidity dili sözdizimi](https://packagecontrol.io/packages/Ethereum/)
+  SublimeText editörü için vurgulama sözdizimi.
+
++Vim:
+
+1. [Vim Solidity](https://github.com/tomlion/vim-solidity/)
+Sözdizimi vurgulama sağlayan Vim editörü için eklenti.
+2. [Vim Sözdizimi](https://github.com/scrooloose/syntastic)
+Derleme kontrolü sağlayan Vim editörü için eklenti.
+
++Visual Studio Kodu:
+
+1. [Visual Studio Kod uzantısı](http://juan.blanco.ws/solidity-contracts-in-visual-studio-code/)
+  Microsoft Visual Studio Code için sözdizimi vurgulaması ve Solidity derleyicisini içeren Solidity eklentisi.
+
+Durdurulan:
+
+1. [Karışık IDE](https://github.com/ethereum/mix/)
+Solidity akıllı sözleşmelerin tasarlanması, hata ayıklaması ve test edilmesi için Qt tabanlı IDE.
+
+2. [Ethereum Studio](https://live.ether.camp/)
+Tam bir Ethereum ortamına kabuk erişimi sağlayan özel web IDE.
+
+3. [Visual Studio Uzantısı](https://visualstudiogallery.msdn.microsoft.com/96221853-33c4-4531-bdd5-d2ea5acc4799/)
+Solidity derleyicisini içeren Microsoft Visual Studio için Solidity eklentisi.
+
+## Solidity Araçları
+
++ [Dapp](https://dapp.tools/dapp/)
+Solidity için araç, paket yöneticisi ve dağıtım asistanı oluşturun.
++ Solidity REPL(https://github.com/raineorshine/solidity-repl)
+Komut satırı Solidity konsolu ile hemen Solidity'yi deneyin.
++ [solgraph](https://github.com/raineorshine/solgraph)
+Solidity kontrol akışını görselleştirin ve potansiyel güvenlik açıklarını vurgulayın.
++ [Doxity](https://github.com/DigixGlobal/doxity)
+Solidity için dokümantasyon Jeneratör.
++ [evmdis](https://github.com/Arachnid/evmdis)
+Ham EVM işlemlerinden daha yüksek bir soyutlama düzeyi sağlamak için byte kodunda statik analiz yapan EVM Disassembler.
++ [ABI Solidity arayüz dönüştürücü](https://gist.github.com/chriseth/8f533d133fa0c15b0d6eaf3ec502c82b)
+Akıllı bir sözleşmenin ABI'sinden sözleşme arayüzleri oluşturmak için bir senaryo.
++ [Securify](https://securify.ch/)
+Akıllı sözleşmeler için tam otomatik çevrimiçi statik analizör, güvenlik açığı kalıplarına dayalı bir güvenlik raporu sunar.
++ [Sürya](https://github.com/ConsenSys/surya/)
+Akıllı sözleşme sistemleri için bir takım görsel çıktılar ve sözleşmelerin yapısı hakkında bilgiler sunan yardımcı program aracı. Ayrıca, işlev çağrısı grafiğini sorgulamayı da destekler.
++ [EVM Lab](https://github.com/ethereum/evmlab/)
+EVM ile etkileşime girmek için zengin takım paketi. Bir VM, Etherchain API ve gaz maliyet göstergeli bir izleyici içerir.
+
+### Not
+
+> Derleme işleminde değişken isimleri, yorumlar ve kaynak kodu formatlama gibi bilgiler kaybedilir ve orijinal kaynak kodunun tamamen geri kazanılması mümkün değildir. Özgün kaynak kodunu veya kod yapısını görüntülemek için akıllı sözleşmelerin açılması mümkün olmayabilir.
+
+## Üçüncü Parti Solidity Parserleri
+
++ [Solidity-Parser](https://github.com/ConsenSys/solidity-parser)
+  JavaScript için Solidity ayrıştırıcısı
++ [ANTLR 4 için Solidity Syntax](https://github.com/federicobond/solidity-antlr4)
+  ANTLR 4 ayrıştırıcı jeneratör için Solidity gramer
+  
+  
+  
 
 ```
 

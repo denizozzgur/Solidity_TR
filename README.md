@@ -3243,7 +3243,7 @@ Resmi doğrulamanın kendisinin yalnızca yaptığınız (şartname) ile nasıl 
 
 + Jenerik:
 
-1. [EthFiddle](https://ethfiddle.com/)
+1. [Coddy Solidity Playground](https://coddy.tech/playground/tr/solidity)
   Tarayıcıdaki Solidity IDE. Solidity kodunuzu yazın ve paylaşın. Sunucu tarafı bileşenleri kullanır.
 2. [Remix](https://remix.ethereum.org/)
   Sunucu tarafı bileşenleri olmadan tümleşik derleyici ve Solidity çalışma ortamı içeren tarayıcı tabanlı IDE.
